@@ -11,23 +11,56 @@
       display: flex;
       flex-direction: column;
       align-items: center;
-      height: 100vh;
       justify-content: center;
       background-color: pink;
+      height: 100vh;
+      overflow: hidden;
     }
 
     h1 {
-      font-size: 50px;
+      font-size: 6vw;
       font-family: Impact, Haettenschweiler, "Arial Narrow Bold", sans-serif;
-      letter-spacing: 4px;
+      letter-spacing: 2px;
       color: white;
-      text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
+      text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
       white-space: nowrap;
+      margin: 0;
+      padding: 0.5em 0;
     }
 
     .box {
       display: flex;
+      justify-content: center;
+      align-items: flex-end;
+      width: 100%;
+      max-width: 1000px;
+      flex-wrap: nowrap;
+      padding: 0 5px;
+      touch-action: none; /* отключаем стандартное поведение свайпа на мобильном */
     }
+
+
+/*
+    .string {
+      flex: 1 1 auto;
+      height: 40vh;
+      margin: 0 5px;
+      background-color: lightgrey;
+      text-align: center;
+      border: 1px solid black;
+      cursor: pointer;
+      user-select: none;
+      transition: 0.1s;
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: bold;
+      font-size: 4vw;
+    }
+*/
+
+
 
     .string {
       height: 300px;
@@ -41,23 +74,37 @@
       transition: 0.1s;
     }
 
+
+
+
     .string.active {
       background-color: orange;
     }
 
     button {
-      margin-bottom: 20px;
+      margin: 10px;
       padding: 10px 20px;
-      font-size: 16px;
+      font-size: 4vw;
       cursor: pointer;
       border: none;
       border-radius: 8px;
+    }
+
+    @media (orientation: portrait) {
+      .string {
+        height: 15vh;
+      }
+      h1 {
+        font-size: 10vw;
+      }
+      button {
+        font-size: 5vw;
+      }
     }
   </style>
 </head>
 
 <body>
-
   <h1>Guitar</h1>
 
   <button id="playBtn">Играть последовательность</button>
@@ -82,18 +129,17 @@
       "1": new Audio("sounds/1.mp3")
     };
 
-    // Предзагрузка аудио, чтобы убрать задержку при первом воспроизведении
+    // Предзагрузка аудио
     for (let key in audios) {
       const audio = audios[key];
       audio.preload = "auto";
       audio.play().then(() => audio.pause()).catch(() => {});
     }
 
-    // Функция воспроизведения струны с подсветкой
+    // Воспроизведение струны с подсветкой
     function playString(num) {
       const audio = audios[num];
       if (!audio) return;
-
       audio.currentTime = 0;
       audio.play().catch(err => console.warn("Ошибка воспроизведения:", err));
 
@@ -104,11 +150,37 @@
       }
     }
 
-    // Наведение мыши на струну
-    document.querySelectorAll(".string").forEach(el => {
-      el.addEventListener("mouseover", () => {
+    const stringsContainer = document.querySelector(".box");
+    let lastString = null;
+
+    function handleTouch(touch) {
+      const el = document.elementFromPoint(touch.clientX, touch.clientY);
+      if (el && el.classList.contains("string") && el.dataset.string !== lastString) {
         playString(el.dataset.string);
-      });
+        lastString = el.dataset.string;
+      }
+    }
+
+    // ПК: наведение и клик
+    document.querySelectorAll(".string").forEach(el => {
+      el.addEventListener("mouseover", () => playString(el.dataset.string));
+      el.addEventListener("click", () => playString(el.dataset.string));
+    });
+
+    // Мобильный: touchstart, touchmove, touchend
+    stringsContainer.addEventListener("touchstart", e => {
+      e.preventDefault();
+      lastString = null;
+      handleTouch(e.touches[0]);
+    });
+
+    stringsContainer.addEventListener("touchmove", e => {
+      e.preventDefault();
+      handleTouch(e.touches[0]);
+    });
+
+    stringsContainer.addEventListener("touchend", e => {
+      lastString = null; // сброс при поднятии пальца
     });
 
     // Воспроизведение последовательности струн
@@ -121,9 +193,7 @@
             return;
           }
           const note = sequence[i];
-          if (/^[1-6]$/.test(note)) { // только допустимые струны
-            playString(note);
-          }
+          if (/^[1-6]$/.test(note)) playString(note);
           i++;
           setTimeout(step, speed);
         }
@@ -135,12 +205,10 @@
     function askSequence() {
       const input = prompt("Введи последовательность струн (например: 65432123456):");
       if (!input) return;
-      playMelody(input, 250); // скорость можно менять
+      playMelody(input, 250);
     }
 
-    // Кнопка запуска
     document.getElementById("playBtn").addEventListener("click", askSequence);
   </script>
-
 </body>
 </html>
