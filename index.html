@@ -30,7 +30,6 @@ h1 { font-size: 6vw; color: white; }
   overflow: hidden;
   background: lightgrey;
   user-select: none;
-  position: relative;
 }
 
 .fret {
@@ -41,7 +40,6 @@ h1 { font-size: 6vw; color: white; }
   justify-content: center;
   font-size: 12px;
   cursor: pointer;
-  z-index: 2;
 }
 
 .fret.active { background: #ffb3b3; }
@@ -49,7 +47,6 @@ h1 { font-size: 6vw; color: white; }
 .strum {
   flex: 1;
   background: rgba(0,0,0,0.05);
-  z-index: 1;
 }
 
 .strum.active { background: orange; }
@@ -59,7 +56,7 @@ button { margin: 10px; padding: 10px; cursor: pointer; }
 </head>
 <body>
 
-<h1>Guitar 2</h1>
+<h1>Guitar 3</h1>
 <button id="playBtn">Играть</button>
 <div class="box" id="box"></div>
 
@@ -102,7 +99,6 @@ for (let s = 6; s >= 1; s--) {
       touchActiveFrets[sn] = f.toString();
       highlight(stringEl, f);
     });
-
     fret.addEventListener("touchend", e => {
       e.stopPropagation();
       const sn = stringEl.dataset.string;
@@ -113,7 +109,7 @@ for (let s = 6; s >= 1; s--) {
     stringEl.appendChild(fret);
   }
 
-  // Strum зона для игры (занимает весь остаток)
+  // Strum зона (отдельный div)
   const strum = document.createElement("div");
   strum.className = "strum";
 
@@ -160,10 +156,9 @@ function highlight(stringEl, f) {
 // Touch свайпы
 function handleTouches(touches) {
   for (let t of touches) {
-    const el = document.elementFromPoint(t.clientX, t.clientY);
-    if (!el) continue;
-    if (!el.classList.contains("strum")) continue; // только strum
-    const stringEl = el.closest(".string");
+    const target = t.target.closest(".strum");
+    if (!target) continue; // только strum
+    const stringEl = target.closest(".string");
     if (!stringEl) continue;
     const sn = stringEl.dataset.string;
 
@@ -187,9 +182,9 @@ document.addEventListener("mousedown", e => { mouseDown = true; mousePlayed.clea
 document.addEventListener("mouseup", () => { mouseDown = false; mousePlayed.clear(); });
 document.addEventListener("mousemove", e => {
   if (!mouseDown) return;
-  const el = document.elementFromPoint(e.clientX, e.clientY);
-  if (!el?.classList.contains("strum")) return;
-  const stringEl = el.closest(".string");
+  const target = e.target.closest(".strum");
+  if (!target) return;
+  const stringEl = target.closest(".string");
   if (!stringEl) return;
   const sn = stringEl.dataset.string;
   if (!mousePlayed.has(sn)) { playString(sn); mousePlayed.add(sn); }
