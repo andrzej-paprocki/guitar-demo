@@ -17,7 +17,7 @@ body {
   user-select: none;
 }
 
-/* 🚫 убираем подсветку и вибро-эффекты */
+/* 🚫 убираем тач-эффекты */
 * {
   -webkit-tap-highlight-color: transparent;
   -webkit-touch-callout: none;
@@ -48,7 +48,7 @@ h1 { font-size: 6vw; color: white; }
   cursor: pointer;
 }
 
-.fret.active { background: #ffb3b3; }
+.fret.active { background: orange; }
 
 .strum { flex: 1; background: rgba(0,0,0,0.05); }
 .strum.active { background: orange; }
@@ -59,14 +59,13 @@ button { margin: 10px; padding: 10px; cursor: pointer; }
 
 <body>
 
-<h1>Guitar 7</h1>
+<h1>Guitar 8</h1>
 <button id="playBtn">Играть</button>
 <div class="box" id="box"></div>
 
 <script>
 const box = document.getElementById("box");
 const touched = new Set();
-const activeFrets = {};
 let pointerDown = false;
 
 // 🎸 Создаем струны
@@ -80,25 +79,23 @@ for (let s = 6; s >= 1; s--) {
     const fret = document.createElement("div");
     fret.className = "fret";
     fret.textContent = f;
-    fret.dataset.fret = f.toString();
 
     fret.addEventListener("pointerdown", e => {
       e.preventDefault();
       const stringNum = stringEl.dataset.string;
 
-      if (activeFrets[stringNum] === f.toString()) {
-        delete activeFrets[stringNum];
-        fret.classList.remove("active");
-      } else {
-        activeFrets[stringNum] = f.toString();
-        highlight(stringEl, f);
-      }
+      // 🎸 играем лад сразу
+      playString(stringNum, f.toString());
+
+      // 🎨 временная подсветка
+      fret.classList.add("active");
+      setTimeout(() => fret.classList.remove("active"), 150);
     });
 
     stringEl.appendChild(fret);
   }
 
-  // Удар по струне
+  // Удар по струне (открытая)
   const strum = document.createElement("div");
   strum.className = "strum";
 
@@ -121,28 +118,22 @@ for (let s = 1; s <= 6; s++) {
 }
 
 // ▶️ Игра струны
-function playString(num) {
-  let key = activeFrets[num] ? `${num}-${activeFrets[num]}` : num;
+function playString(string, fret=null) {
+  let key = fret ? `${string}-${fret}` : string;
   const audio = audios[key];
   if (!audio) return;
 
   audio.currentTime = 0;
   audio.play();
 
-  const el = document.querySelector(`[data-string="${num}"] .strum`);
+  const el = document.querySelector(`[data-string="${string}"] .strum`);
   if (el) {
     el.classList.add("active");
     setTimeout(() => el.classList.remove("active"), 100);
   }
 }
 
-// 🎯 Подсветка ладов
-function highlight(stringEl, f) {
-  stringEl.querySelectorAll(".fret").forEach(x => x.classList.remove("active"));
-  stringEl.children[f-1].classList.add("active");
-}
-
-// 🖐️ Свайп (медиатор)
+// 🖐️ Свайп по струнам (только открытые)
 function handlePointerMove(e) {
   if (!pointerDown) return;
 
@@ -176,13 +167,6 @@ const pressedKeys = new Set();
 document.addEventListener("keydown", e => {
   const key = e.key;
 
-  if (/^F[1-6]$/.test(key)) {
-    e.preventDefault();
-    const fret = key.replace("F", "");
-    for (let i=1;i<=6;i++) activeFrets[i.toString()] = fret;
-    return;
-  }
-
   if (/^[1-6]$/.test(key) && !pressedKeys.has(key)) {
     pressedKeys.add(key);
     playString(key);
@@ -190,13 +174,7 @@ document.addEventListener("keydown", e => {
 });
 
 document.addEventListener("keyup", e => {
-  const key = e.key;
-
-  if (/^F[1-6]$/.test(key)) {
-    for (let i=1;i<=6;i++) delete activeFrets[i.toString()];
-  }
-
-  pressedKeys.delete(key);
+  pressedKeys.delete(e.key);
 });
 
 // 🎵 Мелодия
