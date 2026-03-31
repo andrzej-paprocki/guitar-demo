@@ -24,7 +24,11 @@ body {
 
 h1 { font-size: 6vw; color: white; }
 
-.box { display: flex; gap: 15px; }
+.box { 
+  display: flex; 
+  gap: 15px; 
+  touch-action: none; /* ❗ важно для мобильного свайпа */
+}
 
 .string {
   display: flex;
@@ -58,7 +62,7 @@ button { margin: 10px; padding: 10px; cursor: pointer; }
 
 <body>
 
-<h1>Guitar 10</h1>
+<h1>Guitar 10.2</h1>
 <button id="playBtn">Играть</button>
 <div class="box" id="box"></div>
 
@@ -81,8 +85,7 @@ for (let s = 6; s >= 1; s--) {
 
     fret.addEventListener("pointerdown", e => {
       e.preventDefault();
-      e.stopPropagation(); // блокируем свайп/струну
-
+      e.stopPropagation(); // ❌ блокируем свайп через струну
       playString(stringEl.dataset.string, f.toString());
 
       fret.classList.add("active");
@@ -130,7 +133,7 @@ function playString(string, fret=null) {
   }
 }
 
-// 🖐️ Свайп по струнам (играем открытую струну под пальцем)
+// 🖐️ Свайп по струнам
 function handlePointer(e) {
   const el = document.elementFromPoint(e.clientX, e.clientY);
   const stringEl = el?.closest(".string");
@@ -153,10 +156,11 @@ box.addEventListener("pointerdown", e => {
 // Продолжение свайпа
 document.addEventListener("pointermove", e => {
   if (!pointerDown) return;
+  e.preventDefault(); // ❗ блокируем скролл
   handlePointer(e);
 });
 
-// Окончание свайпа
+// Конец свайпа
 document.addEventListener("pointerup", () => {
   pointerDown = false;
   touched.clear();
