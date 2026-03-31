@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-<title>Guitar</title>
+<title>Guitar 9</title>
 
 <style>
 body {
@@ -17,7 +17,7 @@ body {
   user-select: none;
 }
 
-/* 🚫 убираем тач-эффекты */
+/* Убираем тач-эффекты */
 * {
   -webkit-tap-highlight-color: transparent;
   -webkit-touch-callout: none;
@@ -59,7 +59,7 @@ button { margin: 10px; padding: 10px; cursor: pointer; }
 
 <body>
 
-<h1>Guitar 8</h1>
+<h1>Guitar 9</h1>
 <button id="playBtn">Играть</button>
 <div class="box" id="box"></div>
 
@@ -82,6 +82,8 @@ for (let s = 6; s >= 1; s--) {
 
     fret.addEventListener("pointerdown", e => {
       e.preventDefault();
+      e.stopPropagation(); // ❌ предотвращаем звук открытой струны
+
       const stringNum = stringEl.dataset.string;
 
       // 🎸 играем лад сразу
