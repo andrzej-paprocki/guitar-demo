@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-<title>Guitar</title>
+<title>Guitar Swipe Lads</title>
 
 <style>
 body {
@@ -27,7 +27,7 @@ h1 { font-size: 6vw; color: white; }
 .box { 
   display: flex; 
   gap: 15px; 
-  touch-action: none; /* ❗ важно для мобильного свайпа */
+  touch-action: none; /* важно для мобильного свайпа */
 }
 
 .string {
@@ -62,14 +62,14 @@ button { margin: 10px; padding: 10px; cursor: pointer; }
 
 <body>
 
-<h1>Guitar 10.2</h1>
+<h1>Guitar 11 test</h1>
 <button id="playBtn">Играть</button>
 <div class="box" id="box"></div>
 
 <script>
 const box = document.getElementById("box");
-const touched = new Set();
 let pointerDown = false;
+const touched = new Set();
 
 // 🎸 Создаем струны
 for (let s = 6; s >= 1; s--) {
@@ -85,7 +85,7 @@ for (let s = 6; s >= 1; s--) {
 
     fret.addEventListener("pointerdown", e => {
       e.preventDefault();
-      e.stopPropagation(); // ❌ блокируем свайп через струну
+      e.stopPropagation();
       playString(stringEl.dataset.string, f.toString());
 
       fret.classList.add("active");
@@ -117,7 +117,7 @@ for (let s = 1; s <= 6; s++) {
   }
 }
 
-// ▶️ Игра струны
+// ▶️ Игра струны/лада
 function playString(string, fret=null) {
   const key = fret ? `${string}-${fret}` : string;
   const audio = audios[key];
@@ -133,16 +133,22 @@ function playString(string, fret=null) {
   }
 }
 
-// 🖐️ Свайп по струнам
+// 🖐️ Свайп (играет лад или открытую струну)
 function handlePointer(e) {
   const el = document.elementFromPoint(e.clientX, e.clientY);
   const stringEl = el?.closest(".string");
   if (!stringEl) return;
 
   const num = stringEl.dataset.string;
-  if (!touched.has(num)) {
+  if (touched.has(el)) return; // нота уже сыграна за свайп
+  touched.add(el);
+
+  if (el.classList.contains("fret")) {
+    playString(num, el.textContent);
+    el.classList.add("active");
+    setTimeout(() => el.classList.remove("active"), 150);
+  } else if (el.classList.contains("strum")) {
     playString(num);
-    touched.add(num);
   }
 }
 
@@ -156,7 +162,7 @@ box.addEventListener("pointerdown", e => {
 // Продолжение свайпа
 document.addEventListener("pointermove", e => {
   if (!pointerDown) return;
-  e.preventDefault(); // ❗ блокируем скролл
+  e.preventDefault();
   handlePointer(e);
 });
 
@@ -168,7 +174,6 @@ document.addEventListener("pointerup", () => {
 
 // ⌨️ Клавиатура
 const pressedKeys = new Set();
-
 document.addEventListener("keydown", e => {
   const key = e.key;
   if (/^[1-6]$/.test(key) && !pressedKeys.has(key)) {
@@ -176,10 +181,7 @@ document.addEventListener("keydown", e => {
     playString(key);
   }
 });
-
-document.addEventListener("keyup", e => {
-  pressedKeys.delete(e.key);
-});
+document.addEventListener("keyup", e => pressedKeys.delete(e.key));
 
 // 🎵 Мелодия
 function playMelody(sequence, speed=300) {
