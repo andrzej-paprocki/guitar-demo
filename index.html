@@ -4,7 +4,6 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
 <title>Guitar</title>
-
 <style>
 body {
   margin: 0;
@@ -14,21 +13,13 @@ body {
   justify-content: center;
   background-color: pink;
   height: 100vh;
-  user-select: none; /* отключаем выделение текста */
+  user-select: none;
 }
 
-h1 {
-  font-size: 6vw;
-  color: white;
-}
+h1 { font-size: 6vw; color: white; }
 
-.box {
-  display: flex;
-  gap: 15px;
-  touch-action: none;
-}
+.box { display: flex; gap: 15px; touch-action: none; }
 
-/* СТРУНА */
 .string {
   display: flex;
   flex-direction: column;
@@ -38,10 +29,9 @@ h1 {
   border-radius: 10px;
   overflow: hidden;
   background: lightgrey;
-  user-select: none; /* отключаем выделение */
+  user-select: none;
 }
 
-/* ЛАДЫ */
 .fret {
   flex: 0 0 8%;
   border-bottom: 1px solid rgba(0,0,0,0.2);
@@ -50,103 +40,98 @@ h1 {
   justify-content: center;
   font-size: 12px;
   user-select: none;
-  -webkit-user-drag: none; /* отключаем перетаскивание на Safari/Chrome */
-}
-
-.fret.active {
-  background: #ffb3b3;
-}
-
-/* УДАР */
-.strum {
-  flex: 1;
-  background: rgba(0,0,0,0.05);
-}
-
-.strum.active {
-  background: orange;
-}
-
-button {
-  margin: 10px;
-  padding: 10px;
+  -webkit-user-drag: none;
   cursor: pointer;
 }
+
+.fret.active { background: #ffb3b3; }
+
+.strum { flex: 1; background: rgba(0,0,0,0.05); }
+.strum.active { background: orange; }
+
+button { margin: 10px; padding: 10px; cursor: pointer; }
 </style>
 </head>
-
 <body>
 
-<h1>Guitar 4</h1>
+<h1>Guitar</h1>
 <button id="playBtn">Играть</button>
-
 <div class="box" id="box"></div>
 
 <script>
-// 🎸 СОЗДАЁМ СТРУНЫ
 const box = document.getElementById("box");
-const touched = new Set();
+const activeFrets = {};        // зажатые лады мышью
+const touchActiveFrets = {};   // временные лады для тачскрина
+const touchPlayed = {};        // чтобы палец играл струну один раз
 
+// 🎸 Создаем струны
 for (let s = 6; s >= 1; s--) {
   const stringEl = document.createElement("div");
   stringEl.className = "string";
-  stringEl.dataset.string = s;
+  stringEl.dataset.string = s.toString();
 
-  // Лады
+  // Лады 1–6
   for (let f = 1; f <= 6; f++) {
     const fret = document.createElement("div");
     fret.className = "fret";
     fret.textContent = f;
+    fret.dataset.fret = f.toString();
 
-    fret.addEventListener("touchstart", e => {
-      e.stopPropagation();
-      activeFrets[s] = f;
-      highlight(stringEl, f);
+    // Мышь: toggle лад
+    fret.addEventListener("mousedown", e => {
+      e.preventDefault();
+      const stringNum = stringEl.dataset.string;
+      if (activeFrets[stringNum] === f.toString()) {
+        delete activeFrets[stringNum];
+        fret.classList.remove("active");
+      } else {
+        activeFrets[stringNum] = f.toString();
+        highlight(stringEl, f);
+      }
     });
 
-    fret.addEventListener("mousedown", e => {
+    // Тач: просто подсветка
+    fret.addEventListener("touchstart", e => {
       e.stopPropagation();
-      e.preventDefault(); // 🚨 предотвращаем выделение
-      activeFrets[s] = f;
+      const stringNum = stringEl.dataset.string;
+      touchActiveFrets[stringNum] = f.toString();
       highlight(stringEl, f);
+    });
+    fret.addEventListener("touchend", e => {
+      e.stopPropagation();
+      const stringNum = stringEl.dataset.string;
+      delete touchActiveFrets[stringNum];
+      fret.classList.remove("active");
     });
 
     stringEl.appendChild(fret);
   }
 
-  // Удар
+  // Strum area
   const strum = document.createElement("div");
   strum.className = "strum";
-
+  strum.addEventListener("mousedown", () => playString(s));
   strum.addEventListener("touchstart", () => playString(s));
-  strum.addEventListener("mousedown", e => {
-    e.preventDefault(); // 🚨 предотвращаем выделение
-    playString(s);
-  });
-
   stringEl.appendChild(strum);
   box.appendChild(stringEl);
 }
 
-// 🎧 АУДИО
+// 🎧 Аудио
 const audios = {};
 for (let s = 1; s <= 6; s++) {
-  audios[s] = new Audio(`sounds/${s}.mp3`);
+  audios[s.toString()] = new Audio(`sounds/${s}.mp3`);
   for (let f = 1; f <= 6; f++) {
     audios[`${s}-${f}`] = new Audio(`sounds/${s}-${f}.mp3`);
   }
 }
 
-// 🎯 ЛАДЫ
-const activeFrets = {};
-
+// Игра струны
 function playString(num) {
-  let key = num;
-  if (activeFrets[num]) key = `${num}-${activeFrets[num]}`;
-
+  const key = activeFrets[num] ? `${num}-${activeFrets[num]}`
+            : touchActiveFrets[num] ? `${num}-${touchActiveFrets[num]}`
+            : num.toString();
   const audio = audios[key];
   if (!audio) return;
-
   audio.currentTime = 0;
   audio.play();
 
@@ -157,99 +142,82 @@ function playString(num) {
   }
 }
 
+// Подсветка ладов
 function highlight(stringEl, f) {
   stringEl.querySelectorAll(".fret").forEach(x => x.classList.remove("active"));
   stringEl.children[f-1].classList.add("active");
 }
 
-// 🎸 СВАЙП ТАЧ
-function handleTouch(touch) {
-  const el = document.elementFromPoint(touch.clientX, touch.clientY);
-  const stringEl = el?.closest(".string");
-  if (!stringEl) return;
+// Мобильные тачи (свайп)
+function handleTouchMove(touches) {
+  for (let t of touches) {
+    const el = document.elementFromPoint(t.clientX, t.clientY);
+    const stringEl = el?.closest(".string");
+    if (!stringEl) continue;
 
-  const num = stringEl.dataset.string;
-  if (!touched.has(num)) {
-    playString(num);
-    touched.add(num);
+    const num = stringEl.dataset.string;
+    if (!touchPlayed[t.identifier]) {
+      playString(num);
+      touchPlayed[t.identifier] = true;
+    }
   }
 }
 
 box.addEventListener("touchstart", e => {
-  touched.clear();
-  handleTouch(e.touches[0]);
+  handleTouchMove(e.touches);
+});
+box.addEventListener("touchmove", e => handleTouchMove(e.touches));
+box.addEventListener("touchend", e => {
+  for (let t of e.changedTouches) delete touchPlayed[t.identifier];
 });
 
-box.addEventListener("touchmove", e => handleTouch(e.touches[0]));
-box.addEventListener("touchend", () => touched.clear());
-
-// 🖱 МЫШЬ (зажал + провёл)
+// Мышь (drag)
 let mouseDown = false;
-
-document.addEventListener("mousedown", e => {
-  mouseDown = true;
-  touched.clear();
-  e.preventDefault(); // 🚨 предотвращаем выделение
-});
-
-document.addEventListener("mouseup", () => {
-  mouseDown = false;
-  touched.clear();
-});
-
+const mouseTouched = new Set();
+document.addEventListener("mousedown", e => { mouseDown = true; mouseTouched.clear(); e.preventDefault(); });
+document.addEventListener("mouseup", () => { mouseDown = false; mouseTouched.clear(); });
 document.addEventListener("mousemove", e => {
   if (!mouseDown) return;
-
   const el = document.elementFromPoint(e.clientX, e.clientY);
   const stringEl = el?.closest(".string");
   if (!stringEl) return;
-
   const num = stringEl.dataset.string;
-  if (!touched.has(num)) {
-    playString(num);
-    touched.add(num);
-  }
+  if (!mouseTouched.has(num)) { playString(num); mouseTouched.add(num); }
 });
 
-// ⌨️ КЛАВИАТУРА
+// Клавиатура
 const pressedKeys = new Set();
-
 document.addEventListener("keydown", e => {
   const key = e.key;
-
   if (/^F[1-6]$/.test(key)) {
     e.preventDefault();
     const fret = key.replace("F", "");
-    for (let i = 1; i <= 6; i++) activeFrets[i] = fret;
+    for (let i=1;i<=6;i++) activeFrets[i.toString()] = fret;
     return;
   }
-
   if (/^[1-6]$/.test(key) && !pressedKeys.has(key)) {
     pressedKeys.add(key);
     playString(key);
   }
 });
-
 document.addEventListener("keyup", e => {
   const key = e.key;
-
   if (/^F[1-6]$/.test(key)) {
-    for (let i = 1; i <= 6; i++) delete activeFrets[i];
+    for (let i=1;i<=6;i++) delete activeFrets[i.toString()];
   }
-
   pressedKeys.delete(key);
 });
 
-// 🎵 МЕЛОДИЯ
-function playMelody(sequence, speed = 300) {
+// Мелодия
+function playMelody(sequence, speed=300) {
   return new Promise(resolve => {
-    let i = 0;
+    let i=0;
     function step() {
-      if (i >= sequence.length) return resolve();
+      if(i>=sequence.length) return resolve();
       const note = sequence[i];
-      if (/^[1-6]$/.test(note)) playString(note);
+      if(/^[1-6]$/.test(note)) playString(note);
       i++;
-      setTimeout(step, speed);
+      setTimeout(step,speed);
     }
     step();
   });
@@ -257,10 +225,9 @@ function playMelody(sequence, speed = 300) {
 
 document.getElementById("playBtn").addEventListener("click", () => {
   const input = prompt("Введи последовательность струн:");
-  if (!input) return;
+  if(!input) return;
   playMelody(input, 250);
 });
 </script>
-
 </body>
 </html>
