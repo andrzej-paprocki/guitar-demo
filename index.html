@@ -56,38 +56,38 @@ button { margin: 10px; padding: 10px; cursor: pointer; }
 
 <body>
 
-<h1>Guitar 6</h1>
+<h1>Guitar 5</h1>
 <button id="playBtn">Играть</button>
 <div class="box" id="box"></div>
 
 <script>
 const box = document.getElementById("box");
 const touched = new Set();
-const activeFrets = {};        // зажатые лады мышью
+const activeFrets = {};        // текущие зажатые лады для ПК
 const touchActiveFrets = {};   // временные лады для тачскрина
 
-// 🎸 Создаем струны (1=тонкая, 6=бас)
-for (let s = 6; s >= 1; s--) {
+// 🎸 Создаем струны
+for (let s = 1; s <= 6; s++) {
   const stringEl = document.createElement("div");
   stringEl.className = "string";
-  stringEl.dataset.string = s.toString();
+  stringEl.dataset.string = s;
 
-  // Лады 1–6
+  // Лады
   for (let f = 1; f <= 6; f++) {
     const fret = document.createElement("div");
     fret.className = "fret";
     fret.textContent = f;
-    fret.dataset.fret = f.toString();
+    fret.dataset.fret = f;
 
     // Компьютер: клик → toggle
     fret.addEventListener("mousedown", e => {
       e.preventDefault();
       const stringNum = stringEl.dataset.string;
-      if (activeFrets[stringNum] === f.toString()) {
+      if (activeFrets[stringNum] === f) {
         delete activeFrets[stringNum];
         fret.classList.remove("active");
       } else {
-        activeFrets[stringNum] = f.toString();
+        activeFrets[stringNum] = f;
         highlight(stringEl, f);
       }
     });
@@ -96,7 +96,7 @@ for (let s = 6; s >= 1; s--) {
     fret.addEventListener("touchstart", e => {
       e.stopPropagation();
       const stringNum = stringEl.dataset.string;
-      touchActiveFrets[stringNum] = f.toString();
+      touchActiveFrets[stringNum] = f;
       highlight(stringEl, f);
     });
 
@@ -114,8 +114,8 @@ for (let s = 6; s >= 1; s--) {
   const strum = document.createElement("div");
   strum.className = "strum";
 
-  strum.addEventListener("mousedown", () => playString(s.toString()));
-  strum.addEventListener("touchstart", () => playString(s.toString()));
+  strum.addEventListener("mousedown", () => playString(s));
+  strum.addEventListener("touchstart", () => playString(s));
 
   stringEl.appendChild(strum);
   box.appendChild(stringEl);
@@ -124,7 +124,7 @@ for (let s = 6; s >= 1; s--) {
 // 🎧 Аудио
 const audios = {};
 for (let s = 1; s <= 6; s++) {
-  audios[s.toString()] = new Audio(`sounds/${s}.mp3`);
+  audios[s] = new Audio(`sounds/${s}.mp3`);
   for (let f = 1; f <= 6; f++) {
     audios[`${s}-${f}`] = new Audio(`sounds/${s}-${f}.mp3`);
   }
@@ -132,11 +132,7 @@ for (let s = 1; s <= 6; s++) {
 
 // Игра струны
 function playString(num) {
-  let key = null;
-  if (activeFrets[num]) key = `${num}-${activeFrets[num]}`;
-  else if (touchActiveFrets[num]) key = `${num}-${touchActiveFrets[num]}`;
-  else key = num.toString();
-
+  let key = activeFrets[num] || touchActiveFrets[num] || num;
   const audio = audios[key];
   if (!audio) return;
 
@@ -193,7 +189,7 @@ document.addEventListener("keydown", e => {
   if (/^F[1-6]$/.test(key)) {
     e.preventDefault();
     const fret = key.replace("F", "");
-    for (let i=1;i<=6;i++) activeFrets[i.toString()] = fret;
+    for (let i=1;i<=6;i++) activeFrets[i] = fret;
     return;
   }
   if (/^[1-6]$/.test(key) && !pressedKeys.has(key)) {
@@ -204,7 +200,7 @@ document.addEventListener("keydown", e => {
 document.addEventListener("keyup", e => {
   const key = e.key;
   if (/^F[1-6]$/.test(key)) {
-    for (let i=1;i<=6;i++) delete activeFrets[i.toString()];
+    for (let i=1;i<=6;i++) delete activeFrets[i];
   }
   pressedKeys.delete(key);
 });
