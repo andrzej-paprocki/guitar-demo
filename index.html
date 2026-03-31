@@ -81,10 +81,9 @@ for (let s = 6; s >= 1; s--) {
 
     fret.addEventListener("pointerdown", e => {
       e.preventDefault();
-      e.stopPropagation(); // не дать открытой струне сработать
+      e.stopPropagation(); // блокируем свайп/струну
 
-      const stringNum = stringEl.dataset.string;
-      playString(stringNum, f.toString());
+      playString(stringEl.dataset.string, f.toString());
 
       fret.classList.add("active");
       setTimeout(() => fret.classList.remove("active"), 150);
@@ -117,7 +116,7 @@ for (let s = 1; s <= 6; s++) {
 
 // ▶️ Игра струны
 function playString(string, fret=null) {
-  let key = fret ? `${string}-${fret}` : string;
+  const key = fret ? `${string}-${fret}` : string;
   const audio = audios[key];
   if (!audio) return;
 
@@ -131,10 +130,8 @@ function playString(string, fret=null) {
   }
 }
 
-// 🖐️ Свайп по струнам (играет только открытые струны)
-function handlePointerMove(e) {
-  if (!pointerDown) return;
-
+// 🖐️ Свайп по струнам (играем открытую струну под пальцем)
+function handlePointer(e) {
   const el = document.elementFromPoint(e.clientX, e.clientY);
   const stringEl = el?.closest(".string");
   if (!stringEl) return;
@@ -146,18 +143,24 @@ function handlePointerMove(e) {
   }
 }
 
+// Начало свайпа
 box.addEventListener("pointerdown", e => {
   pointerDown = true;
   touched.clear();
-  handlePointerMove(e);
+  handlePointer(e);
 });
 
+// Продолжение свайпа
+document.addEventListener("pointermove", e => {
+  if (!pointerDown) return;
+  handlePointer(e);
+});
+
+// Окончание свайпа
 document.addEventListener("pointerup", () => {
   pointerDown = false;
   touched.clear();
 });
-
-document.addEventListener("pointermove", handlePointerMove);
 
 // ⌨️ Клавиатура
 const pressedKeys = new Set();
