@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-<title>Guitar Swipe Lads</title>
+<title>Guitar Swipe Stable</title>
 
 <style>
 body {
@@ -62,14 +62,14 @@ button { margin: 10px; padding: 10px; cursor: pointer; }
 
 <body>
 
-<h1>Guitar 11 test</h1>
+<h1>Guitar 11 test 2</h1>
 <button id="playBtn">Играть</button>
 <div class="box" id="box"></div>
 
 <script>
 const box = document.getElementById("box");
 let pointerDown = false;
-const touched = new Set();
+const touched = new Set(); // храним ключи вида "струна-лад", "струна-0" для открытой
 
 // 🎸 Создаем струны
 for (let s = 6; s >= 1; s--) {
@@ -87,9 +87,7 @@ for (let s = 6; s >= 1; s--) {
       e.preventDefault();
       e.stopPropagation();
       playString(stringEl.dataset.string, f.toString());
-
-      fret.classList.add("active");
-      setTimeout(() => fret.classList.remove("active"), 150);
+      flashFret(fret);
     });
 
     stringEl.appendChild(fret);
@@ -127,27 +125,37 @@ function playString(string, fret=null) {
   audio.play();
 
   const el = document.querySelector(`[data-string="${string}"] .strum`);
-  if (el) {
+  if (el && !fret) { // подсветка только открытой струны
     el.classList.add("active");
     setTimeout(() => el.classList.remove("active"), 100);
   }
 }
 
-// 🖐️ Свайп (играет лад или открытую струну)
+// 🔹 временная подсветка лада
+function flashFret(fretEl) {
+  fretEl.classList.add("active");
+  setTimeout(() => fretEl.classList.remove("active"), 150);
+}
+
+// 🖐️ Свайп по струнам и ладам
 function handlePointer(e) {
   const el = document.elementFromPoint(e.clientX, e.clientY);
   const stringEl = el?.closest(".string");
   if (!stringEl) return;
 
   const num = stringEl.dataset.string;
-  if (touched.has(el)) return; // нота уже сыграна за свайп
-  touched.add(el);
+  let key = null;
 
   if (el.classList.contains("fret")) {
+    key = `${num}-${el.textContent}`;
+    if (touched.has(key)) return;
+    touched.add(key);
     playString(num, el.textContent);
-    el.classList.add("active");
-    setTimeout(() => el.classList.remove("active"), 150);
+    flashFret(el);
   } else if (el.classList.contains("strum")) {
+    key = `${num}-0`;
+    if (touched.has(key)) return;
+    touched.add(key);
     playString(num);
   }
 }
@@ -162,7 +170,7 @@ box.addEventListener("pointerdown", e => {
 // Продолжение свайпа
 document.addEventListener("pointermove", e => {
   if (!pointerDown) return;
-  e.preventDefault();
+  e.preventDefault(); // блокируем скролл
   handlePointer(e);
 });
 
