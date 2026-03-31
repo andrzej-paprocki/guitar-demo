@@ -17,9 +17,15 @@ body {
   user-select: none;
 }
 
+/* 🚫 убираем подсветку и вибро-эффекты */
+* {
+  -webkit-tap-highlight-color: transparent;
+  -webkit-touch-callout: none;
+}
+
 h1 { font-size: 6vw; color: white; }
 
-.box { display: flex; gap: 15px; touch-action: none; }
+.box { display: flex; gap: 15px; }
 
 .string {
   display: flex;
@@ -30,7 +36,6 @@ h1 { font-size: 6vw; color: white; }
   border-radius: 10px;
   overflow: hidden;
   background: lightgrey;
-  user-select: none;
 }
 
 .fret {
@@ -40,8 +45,6 @@ h1 { font-size: 6vw; color: white; }
   align-items: center;
   justify-content: center;
   font-size: 12px;
-  user-select: none;
-  -webkit-user-drag: none;
   cursor: pointer;
 }
 
@@ -56,55 +59,40 @@ button { margin: 10px; padding: 10px; cursor: pointer; }
 
 <body>
 
-<h1>Guitar 5</h1>
+<h1>Guitar 7</h1>
 <button id="playBtn">Играть</button>
 <div class="box" id="box"></div>
 
 <script>
 const box = document.getElementById("box");
 const touched = new Set();
-const activeFrets = {};        // текущие зажатые лады для ПК
-const touchActiveFrets = {};   // временные лады для тачскрина
+const activeFrets = {};
+let pointerDown = false;
 
 // 🎸 Создаем струны
-for (let s = 1; s <= 6; s++) {
+for (let s = 6; s >= 1; s--) {
   const stringEl = document.createElement("div");
   stringEl.className = "string";
-  stringEl.dataset.string = s;
+  stringEl.dataset.string = s.toString();
 
   // Лады
   for (let f = 1; f <= 6; f++) {
     const fret = document.createElement("div");
     fret.className = "fret";
     fret.textContent = f;
-    fret.dataset.fret = f;
+    fret.dataset.fret = f.toString();
 
-    // Компьютер: клик → toggle
-    fret.addEventListener("mousedown", e => {
+    fret.addEventListener("pointerdown", e => {
       e.preventDefault();
       const stringNum = stringEl.dataset.string;
-      if (activeFrets[stringNum] === f) {
+
+      if (activeFrets[stringNum] === f.toString()) {
         delete activeFrets[stringNum];
         fret.classList.remove("active");
       } else {
-        activeFrets[stringNum] = f;
+        activeFrets[stringNum] = f.toString();
         highlight(stringEl, f);
       }
-    });
-
-    // Телефон: touchstart → включаем, touchend → выключаем
-    fret.addEventListener("touchstart", e => {
-      e.stopPropagation();
-      const stringNum = stringEl.dataset.string;
-      touchActiveFrets[stringNum] = f;
-      highlight(stringEl, f);
-    });
-
-    fret.addEventListener("touchend", e => {
-      e.stopPropagation();
-      const stringNum = stringEl.dataset.string;
-      delete touchActiveFrets[stringNum];
-      fret.classList.remove("active");
     });
 
     stringEl.appendChild(fret);
@@ -114,8 +102,10 @@ for (let s = 1; s <= 6; s++) {
   const strum = document.createElement("div");
   strum.className = "strum";
 
-  strum.addEventListener("mousedown", () => playString(s));
-  strum.addEventListener("touchstart", () => playString(s));
+  strum.addEventListener("pointerdown", e => {
+    e.preventDefault();
+    playString(s.toString());
+  });
 
   stringEl.appendChild(strum);
   box.appendChild(stringEl);
@@ -124,15 +114,15 @@ for (let s = 1; s <= 6; s++) {
 // 🎧 Аудио
 const audios = {};
 for (let s = 1; s <= 6; s++) {
-  audios[s] = new Audio(`sounds/${s}.mp3`);
+  audios[s.toString()] = new Audio(`sounds/${s}.mp3`);
   for (let f = 1; f <= 6; f++) {
     audios[`${s}-${f}`] = new Audio(`sounds/${s}-${f}.mp3`);
   }
 }
 
-// Игра струны
+// ▶️ Игра струны
 function playString(num) {
-  let key = activeFrets[num] || touchActiveFrets[num] || num;
+  let key = activeFrets[num] ? `${num}-${activeFrets[num]}` : num;
   const audio = audios[key];
   if (!audio) return;
 
@@ -146,15 +136,17 @@ function playString(num) {
   }
 }
 
-// Подсветка ладов
+// 🎯 Подсветка ладов
 function highlight(stringEl, f) {
   stringEl.querySelectorAll(".fret").forEach(x => x.classList.remove("active"));
   stringEl.children[f-1].classList.add("active");
 }
 
-// Свайп тач
-function handleTouch(touch) {
-  const el = document.elementFromPoint(touch.clientX, touch.clientY);
+// 🖐️ Свайп (медиатор)
+function handlePointerMove(e) {
+  if (!pointerDown) return;
+
+  const el = document.elementFromPoint(e.clientX, e.clientY);
   const stringEl = el?.closest(".string");
   if (!stringEl) return;
 
@@ -165,47 +157,49 @@ function handleTouch(touch) {
   }
 }
 
-box.addEventListener("touchstart", e => { touched.clear(); handleTouch(e.touches[0]); });
-box.addEventListener("touchmove", e => handleTouch(e.touches[0]));
-box.addEventListener("touchend", () => touched.clear());
-
-// Мышь (зажал + провёл)
-let mouseDown = false;
-document.addEventListener("mousedown", e => { mouseDown = true; touched.clear(); e.preventDefault(); });
-document.addEventListener("mouseup", () => { mouseDown = false; touched.clear(); });
-document.addEventListener("mousemove", e => {
-  if (!mouseDown) return;
-  const el = document.elementFromPoint(e.clientX, e.clientY);
-  const stringEl = el?.closest(".string");
-  if (!stringEl) return;
-  const num = stringEl.dataset.string;
-  if (!touched.has(num)) { playString(num); touched.add(num); }
+box.addEventListener("pointerdown", e => {
+  pointerDown = true;
+  touched.clear();
+  handlePointerMove(e);
 });
 
-// Клавиатура
+document.addEventListener("pointerup", () => {
+  pointerDown = false;
+  touched.clear();
+});
+
+document.addEventListener("pointermove", handlePointerMove);
+
+// ⌨️ Клавиатура
 const pressedKeys = new Set();
+
 document.addEventListener("keydown", e => {
   const key = e.key;
+
   if (/^F[1-6]$/.test(key)) {
     e.preventDefault();
     const fret = key.replace("F", "");
-    for (let i=1;i<=6;i++) activeFrets[i] = fret;
+    for (let i=1;i<=6;i++) activeFrets[i.toString()] = fret;
     return;
   }
+
   if (/^[1-6]$/.test(key) && !pressedKeys.has(key)) {
     pressedKeys.add(key);
     playString(key);
   }
 });
+
 document.addEventListener("keyup", e => {
   const key = e.key;
+
   if (/^F[1-6]$/.test(key)) {
-    for (let i=1;i<=6;i++) delete activeFrets[i];
+    for (let i=1;i<=6;i++) delete activeFrets[i.toString()];
   }
+
   pressedKeys.delete(key);
 });
 
-// Мелодия
+// 🎵 Мелодия
 function playMelody(sequence, speed=300) {
   return new Promise(resolve => {
     let i=0;
