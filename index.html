@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-<title>Guitar 9</title>
+<title>Guitar</title>
 
 <style>
 body {
@@ -17,7 +17,6 @@ body {
   user-select: none;
 }
 
-/* Убираем тач-эффекты */
 * {
   -webkit-tap-highlight-color: transparent;
   -webkit-touch-callout: none;
@@ -59,7 +58,7 @@ button { margin: 10px; padding: 10px; cursor: pointer; }
 
 <body>
 
-<h1>Guitar 9</h1>
+<h1>Guitar 10</h1>
 <button id="playBtn">Играть</button>
 <div class="box" id="box"></div>
 
@@ -82,14 +81,11 @@ for (let s = 6; s >= 1; s--) {
 
     fret.addEventListener("pointerdown", e => {
       e.preventDefault();
-      e.stopPropagation(); // ❌ предотвращаем звук открытой струны
+      e.stopPropagation(); // не дать открытой струне сработать
 
       const stringNum = stringEl.dataset.string;
-
-      // 🎸 играем лад сразу
       playString(stringNum, f.toString());
 
-      // 🎨 временная подсветка
       fret.classList.add("active");
       setTimeout(() => fret.classList.remove("active"), 150);
     });
@@ -97,7 +93,7 @@ for (let s = 6; s >= 1; s--) {
     stringEl.appendChild(fret);
   }
 
-  // Удар по струне (открытая)
+  // Струна (открытая)
   const strum = document.createElement("div");
   strum.className = "strum";
 
@@ -135,7 +131,7 @@ function playString(string, fret=null) {
   }
 }
 
-// 🖐️ Свайп по струнам (только открытые)
+// 🖐️ Свайп по струнам (играет только открытые струны)
 function handlePointerMove(e) {
   if (!pointerDown) return;
 
@@ -168,7 +164,6 @@ const pressedKeys = new Set();
 
 document.addEventListener("keydown", e => {
   const key = e.key;
-
   if (/^[1-6]$/.test(key) && !pressedKeys.has(key)) {
     pressedKeys.add(key);
     playString(key);
