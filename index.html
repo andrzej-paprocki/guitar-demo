@@ -1,205 +1,153 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-<title>Guitar</title>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Guitar Pro</title>
 
 <style>
 body {
-  margin: 0;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  background-color: pink;
-  height: 100vh;
-  user-select: none;
+  margin:0;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  justify-content:center;
+  height:100vh;
+  background:pink;
 }
 
 * {
   -webkit-tap-highlight-color: transparent;
-  -webkit-touch-callout: none;
 }
 
-h1 { font-size: 6vw; color: white; }
-
-.box { 
-  display: flex; 
-  gap: 15px; 
-  touch-action: none; /* important for mobile swipe */
+.box {
+  display:flex;
+  gap:15px;
+  touch-action:none;
 }
 
 .string {
-  display: flex;
-  flex-direction: column;
-  width: 50px;
-  height: 60vh;
-  border: 2px solid black;
-  border-radius: 10px;
-  overflow: hidden;
-  background: lightgrey;
+  display:flex;
+  flex-direction:column;
+  width:50px;
+  height:60vh;
+  border:2px solid black;
+  background:lightgrey;
 }
 
 .fret {
-  flex: 0 0 8%;
-  border-bottom: 1px solid rgba(0,0,0,0.2);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 12px;
-  cursor: pointer;
+  flex:0 0 8%;
+  border-bottom:1px solid rgba(0,0,0,0.2);
+  display:flex;
+  justify-content:center;
+  align-items:center;
 }
 
-.fret.active { background: orange; }
-
-.strum { flex: 1; background: rgba(0,0,0,0.05); }
-.strum.active { background: orange; }
-
-button { margin: 10px; padding: 10px; cursor: pointer; }
+.strum { flex:1; }
 </style>
 </head>
 
 <body>
 
-<h1>Guitar 11 test 3</h1>
-<button id="playBtn">Play sequence</button>
+<h1>Guitar Pro</h1>
 <div class="box" id="box"></div>
 
 <script>
 const box = document.getElementById("box");
-let pointerDown = false;
-const touched = new Set(); // keys such as “string-fret” or “string-0” for an open string
 
-// Creating strings
-for (let s = 6; s >= 1; s--) {
+// 🎧 аудио
+const audios = {};
+for (let s=1;s<=6;s++){
+  audios[s] = new Audio(`sounds/${s}.mp3`);
+  for (let f=1;f<=6;f++){
+    audios[`${s}-${f}`] = new Audio(`sounds/${s}-${f}.mp3`);
+  }
+}
+
+// 🎸 струны
+for (let s=6;s>=1;s--){
   const stringEl = document.createElement("div");
-  stringEl.className = "string";
-  stringEl.dataset.string = s.toString();
+  stringEl.className="string";
+  stringEl.dataset.string=s;
 
-  // Frets
-  for (let f = 1; f <= 6; f++) {
-    const fret = document.createElement("div");
-    fret.className = "fret";
-    fret.textContent = f;
+  for (let f=1;f<=6;f++){
+    const fret=document.createElement("div");
+    fret.className="fret";
+    fret.textContent=f;
     stringEl.appendChild(fret);
   }
 
-  // Open string
-  const strum = document.createElement("div");
-  strum.className = "strum";
+  const strum=document.createElement("div");
+  strum.className="strum";
   stringEl.appendChild(strum);
 
   box.appendChild(stringEl);
 }
 
-// Audio
-const audios = {};
-for (let s = 1; s <= 6; s++) {
-  audios[s.toString()] = new Audio(`sounds/${s}.mp3`);
-  for (let f = 1; f <= 6; f++) {
-    audios[`${s}-${f}`] = new Audio(`sounds/${s}-${f}.mp3`);
-  }
+// 👉 активные касания
+const activeTouches = new Map();
+
+// ▶️ проигрывание
+function play(key){
+  const a = audios[key];
+  if (!a) return;
+  a.currentTime=0;
+  a.play();
+  return a;
 }
 
-// Note playback
-function playString(string, fret=null) {
-  const key = fret ? `${string}-${fret}` : string;
-  const audio = audios[key];
-  if (!audio) return;
+// 🔁 смена ноты
+function changeNote(id, key){
+  const state = activeTouches.get(id);
+  if (!state) return;
 
-  audio.currentTime = 0;
-  audio.play();
+  if (state.key === key) return;
 
-  // Open string indicator
-  if (!fret) {
-    const el = document.querySelector(`[data-string="${string}"] .strum`);
-    if (el) {
-      el.classList.add("active");
-      setTimeout(() => el.classList.remove("active"), 100);
-    }
-  }
+  state.key = key;
+  state.audio = play(key);
 }
 
-// Fret indicator
-function flashFret(fretEl) {
-  fretEl.classList.add("active");
-  setTimeout(() => fretEl.classList.remove("active"), 150);
-}
-
-// Swipe technique (fret or open string)
-function handlePointer(e) {
+// 🎯 определение ноты под пальцем
+function getNoteFromEvent(e){
   const el = document.elementFromPoint(e.clientX, e.clientY);
   const stringEl = el?.closest(".string");
-  if (!stringEl) return;
+  if (!stringEl) return null;
 
-  const stringNum = stringEl.dataset.string;
-  let key = null;
+  const s = stringEl.dataset.string;
 
-  if (el.classList.contains("fret")) {
-    key = `${stringNum}-${el.textContent}`;
-    if (touched.has(key)) return;
-    touched.add(key);
-    playString(stringNum, el.textContent);
-    flashFret(el);
-  } else if (el.classList.contains("strum")) {
-    key = `${stringNum}-0`;
-    if (touched.has(key)) return;
-    touched.add(key);
-    playString(stringNum);
+  if (el.classList.contains("fret")){
+    return `${s}-${el.textContent}`;
   }
+
+  return s;
 }
 
-// Start swiping
-box.addEventListener("pointerdown", e => {
-  pointerDown = true;
-  touched.clear();
-  handlePointer(e);
-});
+// 🖐️ down
+box.addEventListener("pointerdown", e=>{
+  const key = getNoteFromEvent(e);
+  if (!key) return;
 
-// Continue swiping
-document.addEventListener("pointermove", e => {
-  if (!pointerDown) return;
-  e.preventDefault();
-  handlePointer(e);
-});
+  const audio = play(key);
 
-// End swiping
-document.addEventListener("pointerup", () => {
-  pointerDown = false;
-  touched.clear();
-});
-
-// Keyboard
-const pressedKeys = new Set();
-document.addEventListener("keydown", e => {
-  const key = e.key;
-  if (/^[1-6]$/.test(key) && !pressedKeys.has(key)) {
-    pressedKeys.add(key);
-    playString(key);
-  }
-});
-document.addEventListener("keyup", e => pressedKeys.delete(e.key));
-
-// Melody
-function playMelody(sequence, speed=300) {
-  return new Promise(resolve => {
-    let i=0;
-    function step() {
-      if(i>=sequence.length) return resolve();
-      const note = sequence[i];
-      if(/^[1-6]$/.test(note)) playString(note);
-      i++;
-      setTimeout(step,speed);
-    }
-    step();
+  activeTouches.set(e.pointerId,{
+    key,
+    audio
   });
-}
+});
 
-document.getElementById("playBtn").addEventListener("click", () => {
-  const input = prompt("Enter the sequence of strings:");
-  if(!input) return;
-  playMelody(input, 250);
+// 🖐️ move (🔥 самое важное)
+document.addEventListener("pointermove", e=>{
+  if (!activeTouches.has(e.pointerId)) return;
+
+  const key = getNoteFromEvent(e);
+  if (!key) return;
+
+  changeNote(e.pointerId, key);
+});
+
+// 🖐️ up
+document.addEventListener("pointerup", e=>{
+  activeTouches.delete(e.pointerId);
 });
 </script>
 
