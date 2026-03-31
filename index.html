@@ -4,6 +4,7 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
 <title>Guitar</title>
+
 <style>
 body {
   margin: 0;
@@ -52,19 +53,20 @@ h1 { font-size: 6vw; color: white; }
 button { margin: 10px; padding: 10px; cursor: pointer; }
 </style>
 </head>
+
 <body>
 
-<h1>Guitar</h1>
+<h1>Guitar 6</h1>
 <button id="playBtn">Играть</button>
 <div class="box" id="box"></div>
 
 <script>
 const box = document.getElementById("box");
+const touched = new Set();
 const activeFrets = {};        // зажатые лады мышью
 const touchActiveFrets = {};   // временные лады для тачскрина
-const touchPlayed = {};        // чтобы палец играл струну один раз
 
-// 🎸 Создаем струны
+// 🎸 Создаем струны (1=тонкая, 6=бас)
 for (let s = 6; s >= 1; s--) {
   const stringEl = document.createElement("div");
   stringEl.className = "string";
@@ -77,7 +79,7 @@ for (let s = 6; s >= 1; s--) {
     fret.textContent = f;
     fret.dataset.fret = f.toString();
 
-    // Мышь: toggle лад
+    // Компьютер: клик → toggle
     fret.addEventListener("mousedown", e => {
       e.preventDefault();
       const stringNum = stringEl.dataset.string;
@@ -90,13 +92,14 @@ for (let s = 6; s >= 1; s--) {
       }
     });
 
-    // Тач: просто подсветка
+    // Телефон: touchstart → включаем, touchend → выключаем
     fret.addEventListener("touchstart", e => {
       e.stopPropagation();
       const stringNum = stringEl.dataset.string;
       touchActiveFrets[stringNum] = f.toString();
       highlight(stringEl, f);
     });
+
     fret.addEventListener("touchend", e => {
       e.stopPropagation();
       const stringNum = stringEl.dataset.string;
@@ -107,11 +110,13 @@ for (let s = 6; s >= 1; s--) {
     stringEl.appendChild(fret);
   }
 
-  // Strum area
+  // Удар по струне
   const strum = document.createElement("div");
   strum.className = "strum";
-  strum.addEventListener("mousedown", () => playString(s));
-  strum.addEventListener("touchstart", () => playString(s));
+
+  strum.addEventListener("mousedown", () => playString(s.toString()));
+  strum.addEventListener("touchstart", () => playString(s.toString()));
+
   stringEl.appendChild(strum);
   box.appendChild(stringEl);
 }
@@ -127,11 +132,14 @@ for (let s = 1; s <= 6; s++) {
 
 // Игра струны
 function playString(num) {
-  const key = activeFrets[num] ? `${num}-${activeFrets[num]}`
-            : touchActiveFrets[num] ? `${num}-${touchActiveFrets[num]}`
-            : num.toString();
+  let key = null;
+  if (activeFrets[num]) key = `${num}-${activeFrets[num]}`;
+  else if (touchActiveFrets[num]) key = `${num}-${touchActiveFrets[num]}`;
+  else key = num.toString();
+
   const audio = audios[key];
   if (!audio) return;
+
   audio.currentTime = 0;
   audio.play();
 
@@ -148,41 +156,34 @@ function highlight(stringEl, f) {
   stringEl.children[f-1].classList.add("active");
 }
 
-// Мобильные тачи (свайп)
-function handleTouchMove(touches) {
-  for (let t of touches) {
-    const el = document.elementFromPoint(t.clientX, t.clientY);
-    const stringEl = el?.closest(".string");
-    if (!stringEl) continue;
+// Свайп тач
+function handleTouch(touch) {
+  const el = document.elementFromPoint(touch.clientX, touch.clientY);
+  const stringEl = el?.closest(".string");
+  if (!stringEl) return;
 
-    const num = stringEl.dataset.string;
-    if (!touchPlayed[t.identifier]) {
-      playString(num);
-      touchPlayed[t.identifier] = true;
-    }
+  const num = stringEl.dataset.string;
+  if (!touched.has(num)) {
+    playString(num);
+    touched.add(num);
   }
 }
 
-box.addEventListener("touchstart", e => {
-  handleTouchMove(e.touches);
-});
-box.addEventListener("touchmove", e => handleTouchMove(e.touches));
-box.addEventListener("touchend", e => {
-  for (let t of e.changedTouches) delete touchPlayed[t.identifier];
-});
+box.addEventListener("touchstart", e => { touched.clear(); handleTouch(e.touches[0]); });
+box.addEventListener("touchmove", e => handleTouch(e.touches[0]));
+box.addEventListener("touchend", () => touched.clear());
 
-// Мышь (drag)
+// Мышь (зажал + провёл)
 let mouseDown = false;
-const mouseTouched = new Set();
-document.addEventListener("mousedown", e => { mouseDown = true; mouseTouched.clear(); e.preventDefault(); });
-document.addEventListener("mouseup", () => { mouseDown = false; mouseTouched.clear(); });
+document.addEventListener("mousedown", e => { mouseDown = true; touched.clear(); e.preventDefault(); });
+document.addEventListener("mouseup", () => { mouseDown = false; touched.clear(); });
 document.addEventListener("mousemove", e => {
   if (!mouseDown) return;
   const el = document.elementFromPoint(e.clientX, e.clientY);
   const stringEl = el?.closest(".string");
   if (!stringEl) return;
   const num = stringEl.dataset.string;
-  if (!mouseTouched.has(num)) { playString(num); mouseTouched.add(num); }
+  if (!touched.has(num)) { playString(num); touched.add(num); }
 });
 
 // Клавиатура
@@ -229,5 +230,6 @@ document.getElementById("playBtn").addEventListener("click", () => {
   playMelody(input, 250);
 });
 </script>
+
 </body>
 </html>
