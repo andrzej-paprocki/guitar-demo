@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Guitar Hold + Strum</title>
+
+<style>
+body {
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background-color: pink;
+  height: 100vh;
+  user-select: none;
+}
+
+* {
+  -webkit-tap-highlight-color: transparent;
+  -webkit-touch-callout: none;
+}
+
+h1 { font-size: 6vw; color: white; }
+
+.box { 
+  display: flex; 
+  gap: 15px; 
+  touch-action: none;
+}
+
+.string {
+  display: flex;
+  flex-direction: column;
+  width: 50px;
+  height: 60vh;
+  border: 2px solid black;
+  border-radius: 10px;
+  overflow: hidden;
+  background: lightgrey;
+}
+
+.fret {
+  flex: 0 0 8%;
+  border-bottom: 1px solid rgba(0,0,0,0.2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+}
+
+.fret.active { background: orange; }
+
+.strum { flex: 1; background: rgba(0,0,0,0.05); }
+.strum.active { background: orange; }
+
+button { margin: 10px; padding: 10px; }
+</style>
+</head>
+
+<body>
+
+<h1>Guitar Hold Mode</h1>
+<button id="playBtn">Играть</button>
+<div class="box" id="box"></div>
+
+<script>
+const box = document.getElementById("box");
+let pointerDown = false;
+const touched = new Set();
+const heldFrets = {}; // 🔥 зажатые лады
+
+// 🎸 Создаем струны
+for (let s = 6; s >= 1; s--) {
+  const stringEl = document.createElement("div");
+  stringEl.className = "string";
+  stringEl.dataset.string = s.toString();
+
+  // Лады
+  for (let f = 1; f <= 6; f++) {
+    const fret = document.createElement("div");
+    fret.className = "fret";
+    fret.textContent = f;
+
+    // 👉 зажатие
+    fret.addEventListener("pointerdown", e => {
+      e.stopPropagation();
+      const stringNum = stringEl.dataset.string;
+      heldFrets[stringNum] = f.toString();
+      fret.classList.add("active");
+    });
+
+    // 👉 отпускание
+    const release = () => {
+      const stringNum = stringEl.dataset.string;
+      delete heldFrets[stringNum];
+      fret.classList.remove("active");
+    };
+
+    fret.addEventListener("pointerup", release);
+    fret.addEventListener("pointerleave", release);
+    fret.addEventListener("pointercancel", release);
+
+    stringEl.appendChild(fret);
+  }
+
+  // Открытая струна
+  const strum = document.createElement("div");
+  strum.className = "strum";
+
+  strum.addEventListener("pointerdown", e => {
+    e.preventDefault();
+    playString(s.toString());
+  });
+
+  stringEl.appendChild(strum);
+  box.appendChild(stringEl);
+}
+
+// 🎧 Аудио
+const audios = {};
+for (let s = 1; s <= 6; s++) {
+  audios[s.toString()] = new Audio(`sounds/${s}.mp3`);
+  for (let f = 1; f <= 6; f++) {
+    audios[`${s}-${f}`] = new Audio(`sounds/${s}-${f}.mp3`);
+  }
+}
+
+// ▶️ Воспроизведение
+function playString(string, fret=null) {
+
+  // 🔥 если лад зажат — используем его
+  if (!fret && heldFrets[string]) {
+    fret = heldFrets[string];
+  }
+
+  const key = fret ? `${string}-${fret}` : string;
+  const audio = audios[key];
+  if (!audio) return;
+
+  audio.currentTime = 0;
+  audio.play();
+
+  const el = document.querySelector(`[data-string="${string}"] .strum`);
+  if (el) {
+    el.classList.add("active");
+    setTimeout(() => el.classList.remove("active"), 100);
+  }
+}
+
+// 🖐️ свайп по струнам
+function handlePointer(e) {
+  const el = document.elementFromPoint(e.clientX, e.clientY);
+  const stringEl = el?.closest(".string");
+  if (!stringEl) return;
+
+  const num = stringEl.dataset.string;
+  const key = `${num}-0`;
+
+  if (touched.has(key)) return;
+  touched.add(key);
+
+  playString(num);
+}
+
+// старт свайпа
+box.addEventListener("pointerdown", e => {
+  pointerDown = true;
+  touched.clear();
+  handlePointer(e);
+});
+
+// движение
+document.addEventListener("pointermove", e => {
+  if (!pointerDown) return;
+  e.preventDefault();
+  handlePointer(e);
+});
+
+// конец
+document.addEventListener("pointerup", () => {
+  pointerDown = false;
+  touched.clear();
+});
+
+// ⌨️ клавиатура
+const pressedKeys = new Set();
+document.addEventListener("keydown", e => {
+  const key = e.key;
+  if (/^[1-6]$/.test(key) && !pressedKeys.has(key)) {
+    pressedKeys.add(key);
+    playString(key);
+  }
+});
+document.addEventListener("keyup", e => pressedKeys.delete(e.key));
+
+// 🎵 мелодия
+function playMelody(sequence, speed=300) {
+  return new Promise(resolve => {
+    let i=0;
+    function step() {
+      if(i>=sequence.length) return resolve();
+      const note = sequence[i];
+      if(/^[1-6]$/.test(note)) playString(note);
+      i++;
+      setTimeout(step,speed);
+    }
+    step();
+  });
+}
+
+document.getElementById("playBtn").addEventListener("click", () => {
+  const input = prompt("Введи последовательность струн:");
+  if(!input) return;
+  playMelody(input, 250);
+});
+</script>
+
+</body>
+</html>
