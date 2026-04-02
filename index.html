@@ -67,7 +67,7 @@ body {
 
 <body>
 
-<h1>Guitar Pro 15</h1>
+<h1>Guitar Pro Chords</h1>
 
 <div class="chords">
   <button data-chord="Am">Am</button>
@@ -108,14 +108,40 @@ for (let s = 6; s >= 1; s--) {
   stringEl.className = "string";
   stringEl.dataset.string = s;
 
-  for (let f = 1; f <= 6; f++) {
-    const fret = document.createElement("div");
-    fret.className = "fret";
-    fret.textContent = f;
-    fret.dataset.string = s;
-    fret.dataset.fret = f;
-    stringEl.appendChild(fret);
-  }
+for (let f = 1; f <= 6; f++) {
+  const fret = document.createElement("div");
+  fret.className = "fret";
+  fret.textContent = f;
+  fret.dataset.string = s;
+  fret.dataset.fret = f;
+
+  // 👉 РУЧНОЕ ЗАЖАТИЕ ЛАДА
+  fret.addEventListener("pointerdown", e => {
+    e.stopPropagation();
+
+    // ❗ если включен аккорд — игнор
+    if (currentChord) return;
+
+    const stringNum = s.toString();
+    heldFrets[stringNum] = f.toString();
+
+    fret.classList.add("active");
+  });
+
+  const release = () => {
+    if (currentChord) return;
+
+    const stringNum = s.toString();
+    delete heldFrets[stringNum];
+    fret.classList.remove("active");
+  };
+
+  fret.addEventListener("pointerup", release);
+  fret.addEventListener("pointerleave", release);
+  fret.addEventListener("pointercancel", release);
+
+  stringEl.appendChild(fret);
+}
 
   const strum = document.createElement("div");
   strum.className = "strum";
