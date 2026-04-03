@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-<title>Guitar Pro FINAL</title>
+<title>Guitar Pro FINAL FIX</title>
 
 <style>
 body {
@@ -40,7 +40,11 @@ body {
   user-select: none;
 }
 
+/* временная подсветка */
 .fret.active { background: orange; }
+
+/* подсветка аккорда */
+.fret.chord-active { background: orange; }
 
 .strum { flex:1; background: rgba(0,0,0,0.05); }
 .strum.active { background: orange; }
@@ -90,7 +94,6 @@ const heldFrets = {};
 let pointerDown = false;
 const touched = new Set();
 
-// аккорды
 const chords = {
   "Am": {2:1, 3:2, 4:2},
   "Em": {5:2, 4:2},
@@ -162,18 +165,22 @@ function playString(string, fret=null){
   audio.currentTime = 0;
   audio.play();
 
-  // подсветка струны
   const strumEl = document.querySelector(`[data-string="${string}"] .strum`);
   strumEl?.classList.add("active");
   setTimeout(()=>strumEl?.classList.remove("active"),100);
 
-  // подсветка лада
   if (fret){
     const fretEl = document.querySelector(
       `.fret[data-string="${string}"][data-fret="${fret}"]`
     );
+
     fretEl?.classList.add("active");
-    setTimeout(()=>fretEl?.classList.remove("active"),150);
+
+    setTimeout(()=>{
+      if (!fretEl.classList.contains("chord-active")){
+        fretEl.classList.remove("active");
+      }
+    },150);
   }
 }
 
@@ -231,18 +238,21 @@ buttons.forEach(btn=>{
       const el = document.querySelector(
         `.fret[data-string="${s}"][data-fret="${chord[s]}"]`
       );
-      el?.classList.add("active");
+      el?.classList.add("chord-active");
     }
   });
 });
 
 function clearChord(){
   for (let k in heldFrets) delete heldFrets[k];
-  document.querySelectorAll(".fret").forEach(f=>f.classList.remove("active"));
+  document.querySelectorAll(".fret").forEach(f=>{
+    f.classList.remove("active");
+    f.classList.remove("chord-active");
+  });
   document.querySelectorAll(".chords button").forEach(b=>b.classList.remove("active"));
 }
 
-// 🎵 проигрывание последовательности
+// мелодия
 function playMelody(sequence, speed=300){
   const notes = sequence.trim().split(/\s+/);
   let i=0;
