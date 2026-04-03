@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-<title>Guitar Pro Fixed</title>
+<title>Guitar Pro Fixed Final</title>
 
 <style>
 html, body {
@@ -109,7 +109,7 @@ const chords = {
 
 let currentChord = null;
 
-// создаем струны
+// Создаем струны и лады
 for (let s=6; s>=1; s--){
   const stringEl = document.createElement("div");
   stringEl.className = "string";
@@ -149,7 +149,7 @@ for (let s=6; s>=1; s--){
   box.appendChild(stringEl);
 }
 
-// аудио
+// Аудио
 const audios = {};
 for (let s=1; s<=6; s++){
   audios[s] = new Audio(`sounds/${s}.mp3`);
@@ -158,7 +158,7 @@ for (let s=1; s<=6; s++){
   }
 }
 
-// проигрывание ноты
+// Проигрывание ноты
 function playString(string, fret=null){
   const key = fret ? `${string}-${fret}` : string;
   const audio = audios[key];
@@ -184,21 +184,20 @@ function playString(string, fret=null){
   }
 }
 
-// свайп
+// Свайп по струнам и ладам
 function handlePointer(e){
   const el = document.elementFromPoint(e.clientX,e.clientY);
   const stringEl = el?.closest(".string");
   if (!stringEl) return;
 
   const s = stringEl.dataset.string;
-  if (touched.has(s)) return;
-  touched.add(s);
+  if (touched.has(s + (el.classList.contains("fret") ? `-${el.dataset.fret}` : '-0'))) return;
+  touched.add(s + (el.classList.contains("fret") ? `-${el.dataset.fret}` : '-0'));
 
-  // Новая логика: зажатый лад действует только на своей струне
   if (el.classList.contains("strum")) {
     playString(s, null); // строго открытая
   } else if (el.classList.contains("fret")) {
-    playString(s, heldFrets[s] || el.dataset.fret);
+    playString(s, el.dataset.fret); // только эта струна
   }
 }
 
@@ -219,12 +218,12 @@ document.addEventListener("pointerup", ()=>{
   touched.clear();
 });
 
-// блокировка скролла на мобильных
+// Блокировка скролла на мобильных
 document.addEventListener("touchmove", function(e){
   if (pointerDown) e.preventDefault();
 }, { passive: false });
 
-// аккорды
+// Аккорды
 const buttons = document.querySelectorAll(".chords button");
 
 buttons.forEach(btn=>{
@@ -263,7 +262,7 @@ function clearChord(){
   document.querySelectorAll(".chords button").forEach(b=>b.classList.remove("active"));
 }
 
-// проигрывание мелодии
+// Проигрывание мелодии
 function playMelody(sequence, speed=300){
   const notes = sequence.trim().split(/\s+/);
   let i=0;
