@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-<title>Guitar Pro FINAL</title>
+<title>Guitar Pro Fixed</title>
 
 <style>
 html, body {
@@ -109,7 +109,7 @@ const chords = {
 
 let currentChord = null;
 
-// создание струн
+// создаем струны
 for (let s=6; s>=1; s--){
   const stringEl = document.createElement("div");
   stringEl.className = "string";
@@ -158,7 +158,7 @@ for (let s=1; s<=6; s++){
   }
 }
 
-// звук
+// проигрывание ноты
 function playString(string, fret=null){
   const key = fret ? `${string}-${fret}` : string;
   const audio = audios[key];
@@ -175,9 +175,7 @@ function playString(string, fret=null){
     const fretEl = document.querySelector(
       `.fret[data-string="${string}"][data-fret="${fret}"]`
     );
-
     fretEl?.classList.add("active");
-
     setTimeout(()=>{
       if (!fretEl.classList.contains("chord-active")){
         fretEl.classList.remove("active");
@@ -195,7 +193,13 @@ function handlePointer(e){
   const s = stringEl.dataset.string;
   if (touched.has(s)) return;
   touched.add(s);
-  playString(s, heldFrets[s]);
+
+  // Новая логика: зажатый лад действует только на своей струне
+  if (el.classList.contains("strum")) {
+    playString(s, null); // строго открытая
+  } else if (el.classList.contains("fret")) {
+    playString(s, heldFrets[s] || el.dataset.fret);
+  }
 }
 
 box.addEventListener("pointerdown", e=>{
@@ -215,7 +219,7 @@ document.addEventListener("pointerup", ()=>{
   touched.clear();
 });
 
-// блокируем скролл
+// блокировка скролла на мобильных
 document.addEventListener("touchmove", function(e){
   if (pointerDown) e.preventDefault();
 }, { passive: false });
@@ -259,7 +263,7 @@ function clearChord(){
   document.querySelectorAll(".chords button").forEach(b=>b.classList.remove("active"));
 }
 
-// мелодия
+// проигрывание мелодии
 function playMelody(sequence, speed=300){
   const notes = sequence.trim().split(/\s+/);
   let i=0;
