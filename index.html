@@ -168,23 +168,28 @@ for(let s=6;s>=1;s--){
   stringEl.appendChild(strum);
   box.appendChild(stringEl);
 }
+  
+function handleStrum(e){
+  // Находим ближайшую струну к вертикальной позиции события
+  const strings = Array.from(document.querySelectorAll(".string"));
+  let nearestString = null;
+  let minDist = Infinity;
+  strings.forEach(el=>{
+    const rect = el.getBoundingClientRect();
+    const midY = (rect.top + rect.bottom) / 2;
+    const dist = Math.abs(e.clientY - midY);
+    if(dist < minDist){
+      minDist = dist;
+      nearestString = parseInt(el.dataset.string, 10); // строго число
+    }
+  });
 
-function playNote(s,f,chordName){
-  let key=String(s);
-  if(f!=null) key=`${s}-${f}`;
-  else if(chordName && chords[chordName]?.[s]) key=`${s}-${chords[chordName][s]}`;
-  playSound(key);
-
-  const strumEl=document.querySelector(`[data-string="${s}"] .strum`);
-  strumEl?.classList.add("active");
-  setTimeout(()=>strumEl?.classList.remove("active"),100);
-
-  if(f!=null){
-    const fretEl=document.querySelector(`.fret[data-string="${s}"][data-fret="${f}"]`);
-    fretEl?.classList.add("active");
-  }
-}
-
+  if(!nearestString || touchedStrings.has(nearestString)) return;
+  touchedStrings.add(nearestString);
+  playString(nearestString);
+}  
+  
+  
 function playString(s){
   let f=null;
   if(heldFrets[s]!=null) f=heldFrets[s];
