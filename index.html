@@ -82,7 +82,7 @@ h1 { margin: 10px; }
 
 <body>
 
-<h1>Guitar test 2</h1>
+<h1>Guitar test 3</h1>
 
 <div class="melody-input">
   <input id="melodyInput" placeholder="1 2/3 р 3 4/2 5 6 u:1-5@200$Am">
@@ -103,23 +103,23 @@ h1 { margin: 10px; }
 </div>
 
 <script>
-const box = document.getElementById("box");
-const melodyInput = document.getElementById("melodyInput");
-const playMelodyBtn = document.getElementById("playMelodyBtn");
 let pointerDown = false;
 const touchedStrings = new Set();
 const heldFrets = {};
 let currentChord = null;
 
-// 🎵 аудио и разблокировка
-const audios = {};
-let audioUnlocked=false;
+// ✅ AudioContext для корректного первого касания
+let audioCtx = null; 
+const audios = {}; // будут храниться Audio элементы для каждой струны и лада
+
 function unlockAudio(){
-  if(audioUnlocked) return;
-  audioUnlocked=true;
-  for(let s=1;s<=6;s++){
+  if(audioCtx) return;
+  audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  audioCtx.resume();
+  // создаем Audio элементы
+  for(let s=1; s<=6; s++){
     audios[s] = new Audio(`sounds/${s}.mp3`);
-    for(let f=1;f<=6;f++){
+    for(let f=1; f<=6; f++){
       audios[`${s}-${f}`] = new Audio(`sounds/${s}-${f}.mp3`);
     }
   }
@@ -138,6 +138,7 @@ const chords = {
 };
 
 // 🎸 создаём струны и лады
+const box = document.getElementById("box");
 for(let s=6; s>=1; s--){
   const stringEl = document.createElement("div");
   stringEl.className = "string";
@@ -173,8 +174,14 @@ for(let s=6; s>=1; s--){
   const strum = document.createElement("div");
   strum.className = "strum";
   strum.dataset.string = s;
-  stringEl.appendChild(strum);
+  strum.addEventListener("pointerdown", e=>{
+    unlockAudio(); // 🔑 разблокировка AudioContext
+    pointerDown=true;
+    touchedStrings.clear();
+    handleStrum(e);
+  });
 
+  stringEl.appendChild(strum);
   box.appendChild(stringEl);
 }
 
@@ -193,8 +200,8 @@ function playString(s, fretOverride=null){
   setTimeout(()=>strumEl?.classList.remove("active"),100);
 }
 
-// 🎯 свайп по струнам
-function handlePointer(e){
+// 🎯 обработка свайпа по струнам
+function handleStrum(e){
   const el = document.elementFromPoint(e.clientX,e.clientY);
   if(!el || !el.classList.contains("strum")) return;
 
@@ -205,17 +212,10 @@ function handlePointer(e){
   playString(s, null);
 }
 
-box.addEventListener("pointerdown", e=>{
-  unlockAudio();
-  pointerDown=true;
-  touchedStrings.clear();
-  handlePointer(e);
-});
-
 document.addEventListener("pointermove", e=>{
   if(!pointerDown) return;
   e.preventDefault();
-  handlePointer(e);
+  handleStrum(e);
 },{passive:false});
 
 document.addEventListener("pointerup", ()=>{
@@ -255,6 +255,9 @@ buttons.forEach(btn=>{
 });
 
 // 🎵 мелодия
+const melodyInput = document.getElementById("melodyInput");
+const playMelodyBtn = document.getElementById("playMelodyBtn");
+
 function playMelody(seq, speed=300){
   clearChord(); // выключаем все кнопки аккордов
   const notes = seq.trim().split(/\s+/);
@@ -304,7 +307,7 @@ function playMelody(seq, speed=300){
 }
 
 playMelodyBtn.addEventListener("click", ()=>{
-  unlockAudio();
+  unlockAudio(); // 🔑 разблокировка при первой кнопке "Играть"
   clearChord();
   playMelody(melodyInput.value, 250);
 });
