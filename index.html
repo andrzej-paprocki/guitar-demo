@@ -52,7 +52,7 @@ button { padding:6px 12px; font-size:14px; cursor:pointer; }
 </head>
 <body>
 
-<h1>Guitar 9-2</h1>
+<h1>Guitar 7.1</h1>
 
 <div class="melody">
   <input id="melodyInput" placeholder="6/3 5/2 d:6-1@200$Am">
@@ -130,18 +130,10 @@ function playSound(key){
 }
 
 const box = document.getElementById("box");
-const stringPositions = [];
-
 for(let s=6;s>=1;s--){
   const stringEl=document.createElement("div");
   stringEl.className="string";
   stringEl.dataset.string=s;
-  box.appendChild(stringEl);
-
-  // Сохраняем позицию струны для свайпов между ними
-  const rect = stringEl.getBoundingClientRect();
-  stringPositions.push({s: s, top: rect.top, bottom: rect.bottom, mid: (rect.top+rect.bottom)/2});
-
   for(let f=1;f<=6;f++){
     const fret=document.createElement("div");
     fret.className="fret";
@@ -149,6 +141,7 @@ for(let s=6;s>=1;s--){
     fret.dataset.string=s;
     fret.dataset.fret=f;
 
+    // Подсветка держится, пока палец на ладе
     fret.addEventListener("pointerdown",e=>{
       e.stopPropagation();
       unlockAudio();
@@ -171,18 +164,9 @@ for(let s=6;s>=1;s--){
     touchedStrings.clear();
     handleStrum(e);
   });
-  stringEl.appendChild(strum);
-}
 
-// Определяем ближайшую струну по Y
-function getNearestString(y){
-  let nearest = null;
-  let minDist = Infinity;
-  stringPositions.forEach(p=>{
-    const dist = Math.abs(y - p.mid);
-    if(dist < minDist){ minDist = dist; nearest = p.s; }
-  });
-  return nearest;
+  stringEl.appendChild(strum);
+  box.appendChild(stringEl);
 }
 
 function playNote(s,f,chordName){
@@ -209,18 +193,18 @@ function playString(s){
 }
 
 function handleStrum(e){
-  const s = getNearestString(e.clientY);
-  if(!s || touchedStrings.has(s)) return;
+  const el=document.elementFromPoint(e.clientX,e.clientY);
+  if(!el||!el.classList.contains("strum")) return;
+  const s=el.dataset.string;
+  if(touchedStrings.has(s)) return;
   touchedStrings.add(s);
   playString(s);
 }
 
-document.addEventListener("pointermove",e=>{
-  if(pointerDown){ e.preventDefault(); handleStrum(e); }
-},{passive:false});
+document.addEventListener("pointermove",e=>{ if(pointerDown){ e.preventDefault(); handleStrum(e); } },{passive:false});
 document.addEventListener("pointerup",()=>{ pointerDown=false; touchedStrings.clear(); });
 
-// Chords — старый аккорд снимается перед новым
+// Chords — теперь старый аккорд полностью снимается перед новым
 const buttons=document.querySelectorAll(".chords button");
 buttons.forEach(btn=>{
   btn.addEventListener("pointerdown",e=>{
@@ -231,10 +215,12 @@ buttons.forEach(btn=>{
 
     const name=btn.dataset.chord;
 
+    // Снимаем старый аккорд
     document.querySelectorAll(".fret").forEach(f=>f.classList.remove("chord-active","active"));
     buttons.forEach(b=>b.classList.remove("active"));
     for(let k in heldFrets) delete heldFrets[k];
 
+    // Включаем новый
     currentChord=name;
     btn.classList.add("active");
     for(let s in chords[name]){
