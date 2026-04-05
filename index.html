@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-<title>Guitar Fast Chords</title>
+<title>Guitar Ultra Responsive</title>
 
 <style>
 html, body { margin:0; padding:0; touch-action:none; background:pink; font-family:sans-serif; display:flex; flex-direction:column; align-items:center; }
@@ -17,20 +17,20 @@ h1 { margin:10px; }
 .strum { flex:1; background: rgba(0,0,0,0.05); }
 .strum.active { background:orange; }
 .chords { display:grid; grid-template-columns:repeat(4,90px); gap:13px; margin:15px 0; justify-content:center; }
-.chords button { width:90px; height:50px; border:2px solid black; background:white; font-size:16px; cursor:pointer; }
+.chords button { width:90px; height:50px; border:2px solid black; background:white; font-size:16px; }
 .chords button.active { background:orange; }
 .melody-input { margin-top:10px; display:flex; gap:8px; }
 .melody-input input { padding:6px 8px; font-size:14px; width:250px; }
-.melody-input button { padding:6px 12px; font-size:14px; cursor:pointer; }
+.melody-input button { padding:6px 12px; font-size:14px; }
 </style>
 </head>
 
 <body>
 
-<h1>Guitar</h1>
+<h1>Guitar 6</h1>
 
 <div class="melody-input">
-  <input id="melodyInput" placeholder="Пример: 6/3 5/2 d:6-1@200$Am 2/1 р u:1-4@60$C">
+  <input id="melodyInput" placeholder="6/3 5/2 d:6-1@200$Am">
   <button id="playMelodyBtn">Играть</button>
 </div>
 
@@ -118,13 +118,13 @@ for(let s=1; s<=6; s++){
 function play(string, fretOverride=null, chordOverride=null){
   let fret = null;
 
-  if(fretOverride!==null && fretOverride!==undefined){
+  if(fretOverride!=null){
     fret = fretOverride;
-  } else if(chordOverride && chords[chordOverride] && chords[chordOverride][string]){
+  } else if(chordOverride && chords[chordOverride]?.[string]){
     fret = chords[chordOverride][string];
   } else if(heldFrets[string]){
     fret = heldFrets[string];
-  } else if(currentChord && chords[currentChord] && chords[currentChord][string]){
+  } else if(currentChord && chords[currentChord]?.[string]){
     fret = chords[currentChord][string];
   }
 
@@ -147,7 +147,6 @@ function play(string, fretOverride=null, chordOverride=null){
     },150);
   }
 
-  // 🔥 ключевой фикс
   touchedStrings.delete(String(string));
 }
 
@@ -185,37 +184,43 @@ document.addEventListener("pointercancel", ()=>{
   touchedStrings.clear();
 });
 
-// аккорды
+// 🔥 КЛЮЧЕВОЕ ИСПРАВЛЕНИЕ — pointerdown вместо click
 const buttons = document.querySelectorAll(".chords button");
 
-buttons.forEach(btn=>btn.addEventListener("click", ()=>{
-  // 🔥 мгновенный сброс боя
-  pointerDown = false;
-  touchedStrings.clear();
+buttons.forEach(btn=>{
+  btn.addEventListener("pointerdown", e=>{
+    e.preventDefault();
 
-  const name = btn.dataset.chord;
+    // мгновенно обрываем свайп
+    pointerDown = false;
+    touchedStrings.clear();
 
-  document.querySelectorAll(".fret").forEach(f=>f.classList.remove("chord-active","active"));
-  buttons.forEach(b=>b.classList.remove("active"));
-  for(let k in heldFrets) delete heldFrets[k];
+    const name = btn.dataset.chord;
 
-  if(currentChord===name){
-    currentChord = null;
-    return;
-  }
+    document.querySelectorAll(".fret").forEach(f=>{
+      f.classList.remove("chord-active","active");
+    });
+    buttons.forEach(b=>b.classList.remove("active"));
+    for(let k in heldFrets) delete heldFrets[k];
 
-  currentChord = name;
-  btn.classList.add("active");
+    if(currentChord === name){
+      currentChord = null;
+      return;
+    }
 
-  const chord = chords[name];
-  for(let s in chord){
-    heldFrets[s] = chord[s];
-    const el = document.querySelector(`.fret[data-string="${s}"][data-fret="${chord[s]}"]`);
-    el?.classList.add("chord-active");
-  }
-}));
+    currentChord = name;
+    btn.classList.add("active");
 
-// мелодия
+    const chord = chords[name];
+    for(let s in chord){
+      heldFrets[s] = chord[s];
+      const el = document.querySelector(`.fret[data-string="${s}"][data-fret="${chord[s]}"]`);
+      el?.classList.add("chord-active");
+    }
+  });
+});
+
+// мелодия (без изменений логики)
 function playMelody(seq){
   document.querySelectorAll(".fret").forEach(f=>f.classList.remove("chord-active","active"));
   buttons.forEach(b=>b.classList.remove("active"));
@@ -277,7 +282,7 @@ function strum(direction,start=1,end=6,speed=40,chordName=null){
 }
 
 document.getElementById("playMelodyBtn").onclick=()=>{
-  const val = document.getElementById("melodyInput").value;
+  const val=document.getElementById("melodyInput").value;
   if(!val) return;
   playMelody(val);
 };
