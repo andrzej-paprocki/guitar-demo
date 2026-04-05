@@ -82,7 +82,7 @@ h1 { margin: 10px; }
 
 <body>
 
-<h1>Guitar test 3</h1>
+<h1>Guitar test 4</h1>
 
 <div class="melody-input">
   <input id="melodyInput" placeholder="1 2/3 р 3 4/2 5 6 u:1-5@200$Am">
@@ -110,13 +110,13 @@ let currentChord = null;
 
 // ✅ AudioContext для корректного первого касания
 let audioCtx = null; 
-const audios = {}; // будут храниться Audio элементы для каждой струны и лада
+const audios = {}; 
 
 function unlockAudio(){
   if(audioCtx) return;
   audioCtx = new (window.AudioContext || window.webkitAudioContext)();
   audioCtx.resume();
-  // создаем Audio элементы
+  // создаём аудио элементы после разблокировки
   for(let s=1; s<=6; s++){
     audios[s] = new Audio(`sounds/${s}.mp3`);
     for(let f=1; f<=6; f++){
@@ -175,7 +175,7 @@ for(let s=6; s>=1; s--){
   strum.className = "strum";
   strum.dataset.string = s;
   strum.addEventListener("pointerdown", e=>{
-    unlockAudio(); // 🔑 разблокировка AudioContext
+    unlockAudio();
     pointerDown=true;
     touchedStrings.clear();
     handleStrum(e);
