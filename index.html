@@ -52,7 +52,7 @@ button { padding:6px 12px; font-size:14px; cursor:pointer; }
 </head>
 <body>
 
-<h1>Guitar 9.5</h1>
+<h1>Guitar 7</h1>
 
 <div class="melody">
   <input id="melodyInput" placeholder="6/3 5/2 d:6-1@200$Am">
@@ -168,28 +168,23 @@ for(let s=6;s>=1;s--){
   stringEl.appendChild(strum);
   box.appendChild(stringEl);
 }
-  
-function handleStrum(e){
-  // Находим ближайшую струну к вертикальной позиции события
-  const strings = Array.from(document.querySelectorAll(".string"));
-  let nearestString = null;
-  let minDist = Infinity;
-  strings.forEach(el=>{
-    const rect = el.getBoundingClientRect();
-    const midY = (rect.top + rect.bottom) / 2;
-    const dist = Math.abs(e.clientY - midY);
-    if(dist < minDist){
-      minDist = dist;
-      nearestString = el.dataset.string; // оставляем как строку
-    }
-  });
 
-  if(!nearestString || touchedStrings.has(nearestString)) return;
-  touchedStrings.add(nearestString);
-  playString(nearestString); // теперь nearestString – строка, как требуется
+function playNote(s,f,chordName){
+  let key=String(s);
+  if(f!=null) key=`${s}-${f}`;
+  else if(chordName && chords[chordName]?.[s]) key=`${s}-${chords[chordName][s]}`;
+  playSound(key);
+
+  const strumEl=document.querySelector(`[data-string="${s}"] .strum`);
+  strumEl?.classList.add("active");
+  setTimeout(()=>strumEl?.classList.remove("active"),100);
+
+  if(f!=null){
+    const fretEl=document.querySelector(`.fret[data-string="${s}"][data-fret="${f}"]`);
+    fretEl?.classList.add("active");
+  }
 }
-  
-  
+
 function playString(s){
   let f=null;
   if(heldFrets[s]!=null) f=heldFrets[s];
@@ -198,23 +193,12 @@ function playString(s){
 }
 
 function handleStrum(e){
-  // Находим ближайшую струну по вертикали
-  const strings = Array.from(document.querySelectorAll(".string"));
-  let nearestString = null;
-  let minDist = Infinity;
-  strings.forEach(el=>{
-    const rect = el.getBoundingClientRect();
-    const midY = (rect.top + rect.bottom) / 2;
-    const dist = Math.abs(e.clientY - midY);
-    if(dist < minDist){
-      minDist = dist;
-      nearestString = parseInt(el.dataset.string, 10); // строго число
-    }
-  });
-
-  if(!nearestString || touchedStrings.has(nearestString)) return;
-  touchedStrings.add(nearestString);
-  playString(nearestString);
+  const el=document.elementFromPoint(e.clientX,e.clientY);
+  if(!el||!el.classList.contains("strum")) return;
+  const s=el.dataset.string;
+  if(touchedStrings.has(s)) return;
+  touchedStrings.add(s);
+  playString(s);
 }
 
 document.addEventListener("pointermove",e=>{ if(pointerDown){ e.preventDefault(); handleStrum(e); } },{passive:false});
