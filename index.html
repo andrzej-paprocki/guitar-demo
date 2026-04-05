@@ -18,7 +18,6 @@ html, body {
   align-items: center;
 }
 
-/* 🚫 Полный запрет выделения */
 * {
   user-select: none;
   -webkit-user-select: none;
@@ -58,7 +57,6 @@ h1 { margin: 10px; }
 .strum { flex:1; background: rgba(0,0,0,0.05); }
 .strum.active { background: orange; }
 
-/* кнопки аккордов */
 .chords {
   display: grid;
   grid-template-columns: repeat(4, 90px);
@@ -84,7 +82,7 @@ h1 { margin: 10px; }
 
 <body>
 
-<h1>Guitar test</h1>
+<h1>Guitar test 2</h1>
 
 <div class="melody-input">
   <input id="melodyInput" placeholder="1 2/3 р 3 4/2 5 6 u:1-5@200$Am">
@@ -113,17 +111,15 @@ const touchedStrings = new Set();
 const heldFrets = {};
 let currentChord = null;
 
-// 🎵 универсальная разблокировка AudioContext
-let audioCtx = null;
+// 🎵 аудио и разблокировка
 const audios = {};
+let audioUnlocked=false;
 function unlockAudio(){
-  if(audioCtx) return;
-  audioCtx = new (window.AudioContext||window.webkitAudioContext)();
-  audioCtx.resume();
-  // создаём все аудио после разблокировки
-  for (let s=1; s<=6; s++){
+  if(audioUnlocked) return;
+  audioUnlocked=true;
+  for(let s=1;s<=6;s++){
     audios[s] = new Audio(`sounds/${s}.mp3`);
-    for (let f=1; f<=6; f++){
+    for(let f=1;f<=6;f++){
       audios[`${s}-${f}`] = new Audio(`sounds/${s}-${f}.mp3`);
     }
   }
@@ -177,14 +173,14 @@ for(let s=6; s>=1; s--){
   const strum = document.createElement("div");
   strum.className = "strum";
   strum.dataset.string = s;
+  stringEl.appendChild(strum);
 
   box.appendChild(stringEl);
-  stringEl.appendChild(strum);
 }
 
 // ▶️ воспроизведение
-function playString(s, chordOverride=null){
-  const fret = chordOverride?s:heldFrets[s];
+function playString(s, fretOverride=null){
+  const fret = fretOverride!==null?fretOverride:heldFrets[s];
   const key = fret ? `${s}-${fret}` : s;
   const audio = audios[key];
   if(!audio) return;
@@ -206,7 +202,7 @@ function handlePointer(e){
   if(touchedStrings.has(s)) return;
   touchedStrings.add(s);
 
-  playString(s, currentChord?heldFrets[s]:null);
+  playString(s, null);
 }
 
 box.addEventListener("pointerdown", e=>{
@@ -260,7 +256,7 @@ buttons.forEach(btn=>{
 
 // 🎵 мелодия
 function playMelody(seq, speed=300){
-  clearChord(); // выключаем аккорды перед мелодией
+  clearChord(); // выключаем все кнопки аккордов
   const notes = seq.trim().split(/\s+/);
   let i=0;
   function step(){
@@ -278,7 +274,7 @@ function playMelody(seq, speed=300){
       let s=f=null;
       if(note.includes('/')) [s,f]=note.split('/');
       else s=note;
-      if(/^[1-6]$/.test(s)) playString(s, f?f:chordOverride?chords[chordOverride][s]:null);
+      if(/^[1-6]$/.test(s)) playString(s, f?f:(chordOverride?chords[chordOverride][s]:null));
       if(note.startsWith('u:')||note.startsWith('d:')){
         const m=note.match(/([ud]):(\d+)-(\d+)@(\d+)(?:\$(\w+))?/);
         if(m){
@@ -313,12 +309,8 @@ playMelodyBtn.addEventListener("click", ()=>{
   playMelody(melodyInput.value, 250);
 });
 
-// блокируем скролл
-document.addEventListener("touchmove", e=>{
-  if(pointerDown) e.preventDefault();
-},{passive:false});
-
-// запрет выделения
+// блокируем скролл и контекстное меню
+document.addEventListener("touchmove", e=>{if(pointerDown) e.preventDefault();},{passive:false});
 document.addEventListener("selectstart", e=>e.preventDefault());
 document.addEventListener("contextmenu", e=>e.preventDefault());
 </script>
