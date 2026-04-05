@@ -52,7 +52,7 @@ button { padding:6px 12px; font-size:14px; cursor:pointer; }
 </head>
 <body>
 
-<h1>Guitar 9.3</h1>
+<h1>Guitar 9.4</h1>
 
 <div class="melody">
   <input id="melodyInput" placeholder="6/3 5/2 d:6-1@200$Am">
@@ -203,9 +203,10 @@ function handleStrum(e){
     const dist = Math.abs(e.clientY - midY);
     if(dist < minDist){
       minDist = dist;
-      nearestString = Number(el.dataset.string); // <-- важно как число
+      nearestString = parseInt(el.dataset.string, 10); // строго число
     }
   });
+
   if(!nearestString || touchedStrings.has(nearestString)) return;
   touchedStrings.add(nearestString);
   playString(nearestString);
