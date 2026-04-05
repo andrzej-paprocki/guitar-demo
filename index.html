@@ -52,7 +52,7 @@ button { padding:6px 12px; font-size:14px; cursor:pointer; }
 </head>
 <body>
 
-<h1>Guitar 9</h1>
+<h1>Guitar 9-1</h1>
 
 <div class="melody">
   <input id="melodyInput" placeholder="6/3 5/2 d:6-1@200$Am">
@@ -157,72 +157,38 @@ for(let s=6;s>=1;s--){
   const strum=document.createElement("div");
   strum.className="strum";
   strum.dataset.string=s;
-  stringEl.appendChild(strum);
-  box.appendChild(stringEl);
-}
-
-// Получаем позиции струн для свайпа
-function getStringPositions(){
-  return Array.from(document.querySelectorAll(".string")).map(el=>{
-    const rect=el.getBoundingClientRect();
-    return { s: el.dataset.string, top: rect.top, bottom: rect.bottom, mid: (rect.top+rect.bottom)/2 };
-  });
-}
-
-function getNearestString(y){
-  let positions = getStringPositions();
-  let nearest = null;
-  let minDist = Infinity;
-  positions.forEach(p=>{
-    const dist = Math.abs(y - p.mid);
-    if(dist < minDist){
-      minDist = dist;
-      nearest = p.s;
-    }
-  });
-  return nearest;
-}
-
-function playNote(s,f,chordName){
-  let key=String(s);
-  if(f!=null) key=`${s}-${f}`;
-  else if(chordName && chords[chordName]?.[s]) key=`${s}-${chords[chordName][s]}`;
-  playSound(key);
-
-  const strumEl=document.querySelector(`[data-string="${s}"] .strum`);
-  strumEl?.classList.add("active");
-  setTimeout(()=>strumEl?.classList.remove("active"),100);
-
-  if(f!=null){
-    const fretEl=document.querySelector(`.fret[data-string="${s}"][data-fret="${f}"]`);
-    fretEl?.classList.add("active");
-  }
-}
-
-function playString(s){
-  let f=null;
-  if(heldFrets[s]!=null) f=heldFrets[s];
-  else if(currentChord && chords[currentChord]?.[s]) f=chords[currentChord][s];
-  playNote(s,f,null);
-}
-
-function handleStrum(e){
-  const s = getNearestString(e.clientY);
-  if(!s || touchedStrings.has(s)) return;
-  touchedStrings.add(s);
-  playString(s);
-}
-
-document.addEventListener("pointermove",e=>{ if(pointerDown){ e.preventDefault(); handleStrum(e); } },{passive:false});
-document.addEventListener("pointerup",()=>{ pointerDown=false; touchedStrings.clear(); });
-document.querySelectorAll(".strum").forEach(strum=>{
   strum.addEventListener("pointerdown",e=>{
     unlockAudio();
     pointerDown=true;
     touchedStrings.clear();
     handleStrum(e);
   });
-});
+
+  stringEl.appendChild(strum);
+  box.appendChild(stringEl);
+}
+
+// Исправленная функция свайпа — теперь ищем ближайшую струну
+function handleStrum(e){
+  const strings = Array.from(document.querySelectorAll(".string"));
+  let nearest = null;
+  let minDist = Infinity;
+  strings.forEach(el=>{
+    const rect = el.getBoundingClientRect();
+    const mid = (rect.top + rect.bottom)/2;
+    const dist = Math.abs(e.clientY - mid);
+    if(dist < minDist){
+      minDist = dist;
+      nearest = el.dataset.string;
+    }
+  });
+  if(!nearest || touchedStrings.has(nearest)) return;
+  touchedStrings.add(nearest);
+  playString(nearest);
+}
+
+document.addEventListener("pointermove",e=>{ if(pointerDown){ e.preventDefault(); handleStrum(e); } },{passive:false});
+document.addEventListener("pointerup",()=>{ pointerDown=false; touchedStrings.clear(); });
 
 // Chords
 const buttons=document.querySelectorAll(".chords button");
