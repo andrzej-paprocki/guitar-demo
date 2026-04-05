@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Guitar Final Stable</title>
+<title>Guitar Stable Final</title>
 
 <style>
 html, body {
@@ -16,14 +16,12 @@ html, body {
   flex-direction:column;
   align-items:center;
 }
-
 * {
   user-select:none;
   -webkit-user-select:none;
   -webkit-touch-callout:none;
   -webkit-tap-highlight-color:transparent;
 }
-
 h1 { margin:10px; }
 
 .box { display:flex; gap:15px; }
@@ -50,14 +48,8 @@ h1 { margin:10px; }
   background:orange;
 }
 
-.strum {
-  flex:1;
-  background:rgba(0,0,0,0.05);
-}
-
-.strum.active {
-  background:orange;
-}
+.strum { flex:1; background:rgba(0,0,0,0.05); }
+.strum.active { background:orange; }
 
 .chords {
   display:grid;
@@ -74,12 +66,23 @@ h1 { margin:10px; }
 .chords button.active {
   background:orange;
 }
+
+.melody {
+  margin:10px;
+  display:flex;
+  gap:5px;
+}
 </style>
 </head>
 
 <body>
 
-<h1>Guitar 6.1</h1>
+<h1>Guitar 6.2</h1>
+
+<div class="melody">
+  <input id="melodyInput" placeholder="6/3 5/2 d:6-1@200$Am">
+  <button id="playBtn">Играть</button>
+</div>
 
 <div class="box" id="box"></div>
 
@@ -100,6 +103,7 @@ const box = document.getElementById("box");
 let pointerDown = false;
 const touchedStrings = new Set();
 const heldFrets = {};
+let currentChord = null;
 
 let audioUnlocked = false;
 
@@ -113,8 +117,6 @@ const chords = {
   "A": {2:2,3:2,4:2},
   "D": {1:2,2:3,3:2}
 };
-
-let currentChord = null;
 
 // 🎸 создание грифа
 for(let s=6; s>=1; s--){
@@ -164,29 +166,30 @@ for(let s=1; s<=6; s++){
   }
 }
 
-// 🔓 разблокировка аудио
+// 🔓 НАДЁЖНЫЙ unlock
 function unlockAudio(){
   if(audioUnlocked) return;
   audioUnlocked = true;
 
-  Object.values(audios).forEach(a=>{
-    try{
-      a.volume = 0;
-      a.currentTime = 0;
-      a.play().then(()=>{
-        a.pause();
-        a.currentTime = 0;
-        a.volume = 1;
-      }).catch(()=>{});
-    }catch(e){}
-  });
+  const a = audios[1];
+  if(!a) return;
+
+  a.currentTime = 0;
+  a.play().then(()=>{
+    a.pause();
+    a.currentTime = 0;
+  }).catch(()=>{});
 }
 
 // ▶️ звук
-function play(string){
+function play(string, fretOverride=null, chordOverride=null){
   let fret = null;
 
-  if(heldFrets[string]){
+  if(fretOverride!=null){
+    fret = fretOverride;
+  } else if(chordOverride && chords[chordOverride]?.[string]){
+    fret = chords[chordOverride][string];
+  } else if(heldFrets[string]){
     fret = heldFrets[string];
   } else if(currentChord && chords[currentChord]?.[string]){
     fret = chords[currentChord][string];
@@ -241,7 +244,7 @@ document.addEventListener("pointercancel", ()=>{
   touchedStrings.clear();
 });
 
-// 🎵 аккорды (БЕЗ click!)
+// 🎵 аккорды
 const buttons = document.querySelectorAll(".chords button");
 
 buttons.forEach(btn=>{
@@ -283,7 +286,76 @@ buttons.forEach(btn=>{
   });
 });
 
-document.addEventListener("contextmenu", e=>e.preventDefault());
+// 🎼 проигрывание строки
+function playMelody(text){
+  // отключаем аккорды UI
+  document.querySelectorAll(".fret").forEach(f=>f.classList.remove("active","chord-active"));
+  document.querySelectorAll(".chords button").forEach(b=>b.classList.remove("active"));
+  currentChord = null;
+  for(let k in heldFrets) delete heldFrets[k];
+
+  const tokens = text.trim().split(/\s+/);
+  let i = 0;
+
+  function step(){
+    if(i>=tokens.length) return;
+
+    const t = tokens[i];
+
+    if(t.startsWith("d") || t.startsWith("u")){
+      const dir = t[0];
+      const range = t.match(/:(\d+)-(\d+)/);
+      const speed = t.match(/@(\d+)/);
+      const chord = t.match(/\$(\w+)/);
+
+      let s1=1, s2=6, sp=80, ch=null;
+      if(range){ s1=+range[1]; s2=+range[2]; }
+      if(speed){ sp=+speed[1]; }
+      if(chord){ ch=chord[1]; }
+
+      strum(dir,s1,s2,sp,ch);
+
+      i++;
+      setTimeout(step, sp * Math.abs(s2-s1+1));
+      return;
+    }
+
+    if(t.includes("/")){
+      let [s,f]=t.split("/");
+      play(+s,+f,null);
+    } else {
+      play(+t);
+    }
+
+    i++;
+    setTimeout(step,250);
+  }
+
+  step();
+}
+
+function strum(dir,s1,s2,sp,ch){
+  let arr = [];
+
+  if(s1<=s2){
+    for(let i=s1;i<=s2;i++) arr.push(i);
+  } else {
+    for(let i=s1;i>=s2;i--) arr.push(i);
+  }
+
+  if(dir==="d") arr.reverse();
+
+  arr.forEach((s,i)=>{
+    setTimeout(()=>play(s,null,ch), i*sp);
+  });
+}
+
+// кнопка
+document.getElementById("playBtn").onclick=()=>{
+  unlockAudio();
+  playMelody(document.getElementById("melodyInput").value);
+};
+
 </script>
 
 </body>
