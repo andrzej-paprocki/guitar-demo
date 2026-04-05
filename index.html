@@ -169,7 +169,25 @@ for(let s=6;s>=1;s--){
   box.appendChild(stringEl);
 }
   
-Сейчас вообще никакая струна не звучит. 
+function handleStrum(e){
+  // Находим ближайшую струну к вертикальной позиции события
+  const strings = Array.from(document.querySelectorAll(".string"));
+  let nearestString = null;
+  let minDist = Infinity;
+  strings.forEach(el=>{
+    const rect = el.getBoundingClientRect();
+    const midY = (rect.top + rect.bottom) / 2;
+    const dist = Math.abs(e.clientY - midY);
+    if(dist < minDist){
+      minDist = dist;
+      nearestString = el.dataset.string; // оставляем как строку
+    }
+  });
+
+  if(!nearestString || touchedStrings.has(nearestString)) return;
+  touchedStrings.add(nearestString);
+  playString(nearestString); // теперь nearestString – строка, как требуется
+}
   
   
 function playString(s){
