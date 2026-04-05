@@ -27,7 +27,7 @@ h1 { margin:10px; }
 
 <body>
 
-<h1>Guitar</h1>
+<h1>Guitar 4</h1>
 
 <div class="melody-input">
   <input id="melodyInput" placeholder="Пример: 6/3 5/2 d:6-1@200$Am 2/1 р u:1-4@60$C">
@@ -189,12 +189,6 @@ buttons.forEach(btn=>btn.addEventListener("click", ()=>{
 
 // мелодия и бой
 function playMelody(seq){
-  // при начале проигрывания мелодии сбрасываем все аккорды
-  document.querySelectorAll(".fret").forEach(f=>f.classList.remove("chord-active","active"));
-  buttons.forEach(b=>b.classList.remove("active"));
-  for(let k in heldFrets) delete heldFrets[k];
-  currentChord = null;
-
   const notes = seq.trim().split(/\s+/);
   let i=0;
   function step(){
