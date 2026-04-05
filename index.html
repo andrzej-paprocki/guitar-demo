@@ -170,6 +170,7 @@ for(let s=6;s>=1;s--){
 
 // Исправленная функция свайпа — теперь ищем ближайшую струну
 function handleStrum(e){
+  // Находим ближайшую струну по вертикали
   const strings = Array.from(document.querySelectorAll(".string"));
   let nearest = null;
   let minDist = Infinity;
