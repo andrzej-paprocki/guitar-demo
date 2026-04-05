@@ -52,7 +52,7 @@ button { padding:6px 12px; font-size:14px; cursor:pointer; }
 </head>
 <body>
 
-<h1>Guitar 9-1</h1>
+<h1>Guitar 9.3</h1>
 
 <div class="melody">
   <input id="melodyInput" placeholder="6/3 5/2 d:6-1@200$Am">
@@ -141,6 +141,7 @@ for(let s=6;s>=1;s--){
     fret.dataset.string=s;
     fret.dataset.fret=f;
 
+    // Подсветка держится, пока палец на ладе
     fret.addEventListener("pointerdown",e=>{
       e.stopPropagation();
       unlockAudio();
@@ -168,7 +169,29 @@ for(let s=6;s>=1;s--){
   box.appendChild(stringEl);
 }
 
-// Исправленная функция свайпа — теперь ищем ближайшую струну
+function playNote(s,f,chordName){
+  let key=String(s);
+  if(f!=null) key=`${s}-${f}`;
+  else if(chordName && chords[chordName]?.[s]) key=`${s}-${chords[chordName][s]}`;
+  playSound(key);
+
+  const strumEl=document.querySelector(`[data-string="${s}"] .strum`);
+  strumEl?.classList.add("active");
+  setTimeout(()=>strumEl?.classList.remove("active"),100);
+
+  if(f!=null){
+    const fretEl=document.querySelector(`.fret[data-string="${s}"][data-fret="${f}"]`);
+    fretEl?.classList.add("active");
+  }
+}
+
+function playString(s){
+  let f=null;
+  if(heldFrets[s]!=null) f=heldFrets[s];
+  else if(currentChord && chords[currentChord]?.[s]) f=chords[currentChord][s];
+  playNote(s,f,null);
+}
+
 function handleStrum(e){
   // Находим ближайшую струну по вертикали
   const strings = Array.from(document.querySelectorAll(".string"));
@@ -191,7 +214,7 @@ function handleStrum(e){
 document.addEventListener("pointermove",e=>{ if(pointerDown){ e.preventDefault(); handleStrum(e); } },{passive:false});
 document.addEventListener("pointerup",()=>{ pointerDown=false; touchedStrings.clear(); });
 
-// Chords
+// Chords — теперь старый аккорд полностью снимается перед новым
 const buttons=document.querySelectorAll(".chords button");
 buttons.forEach(btn=>{
   btn.addEventListener("pointerdown",e=>{
@@ -201,10 +224,13 @@ buttons.forEach(btn=>{
     touchedStrings.clear();
 
     const name=btn.dataset.chord;
+
+    // Снимаем старый аккорд
     document.querySelectorAll(".fret").forEach(f=>f.classList.remove("chord-active","active"));
     buttons.forEach(b=>b.classList.remove("active"));
     for(let k in heldFrets) delete heldFrets[k];
 
+    // Включаем новый
     currentChord=name;
     btn.classList.add("active");
     for(let s in chords[name]){
