@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-<title>Guitar Stable Final Fix</title>
+<title>Guitar Universal First Touch</title>
 
 <style>
 html, body {
@@ -52,7 +52,7 @@ h1 { margin:10px; }
 
 <body>
 
-<h1>Guitar 6</h1>
+<h1>Guitar 6.1</h1>
 
 <div class="melody">
   <input id="melodyInput" placeholder="6/3 5/2 d:6-1@200$Am">
@@ -79,18 +79,21 @@ let pointerDown=false;
 const touchedStrings = new Set();
 const heldFrets = {};
 let currentChord = null;
-
-// Audio unlock (для Chrome/Edge)
 let audioUnlocked = false;
-function unlockAudio(){ if(audioUnlocked) return;
+
+// Unlock Audio (универсальное решение)
+function unlockAudio(e){
+  if(audioUnlocked) return;
+  audioUnlocked = true;
   try{
     const ctx = new (window.AudioContext||window.webkitAudioContext)();
     const buffer = ctx.createBuffer(1,1,22050);
     const src = ctx.createBufferSource();
     src.buffer=buffer; src.connect(ctx.destination); src.start(0);
     if(ctx.state==="suspended") ctx.resume();
-    audioUnlocked=true;
-  }catch(e){ console.log("Audio unlock error",e);}
+  }catch(err){ console.log("Audio unlock error",err);}
+  // Если первое касание на струне — сразу сыграть её звук
+  if(e && e.currentTarget?.dataset?.string) play(e.currentTarget.dataset.string);
 }
 
 // Аккорды
@@ -115,6 +118,7 @@ for(let s=6; s>=1; s--){
 
     fret.addEventListener("pointerdown", e=>{
       e.stopPropagation();
+      unlockAudio(e);
       heldFrets[s]=f;
       fret.classList.add("active");
     });
@@ -130,6 +134,7 @@ for(let s=6; s>=1; s--){
   const strum=document.createElement("div");
   strum.className="strum";
   strum.dataset.string=s;
+  strum.addEventListener("pointerdown", e=>{ unlockAudio(e); pointerDown=true; touchedStrings.clear(); handle(e); });
   stringEl.appendChild(strum);
   box.appendChild(stringEl);
 }
@@ -141,9 +146,8 @@ for(let s=1;s<=6;s++){
   for(let f=1;f<=6;f++) audios[`${s}-${f}`]=new Audio(`sounds/${s}-${f}.mp3`);
 }
 
-// Функция play
+// Play функция
 function play(string,fretOverride=null,chordOverride=null){
-  unlockAudio();
   let fret=null;
   if(fretOverride!=null) fret=fretOverride;
   else if(chordOverride && chords[chordOverride]?.[string]) fret=chords[chordOverride][string];
@@ -177,15 +181,8 @@ function handle(e){
   play(s);
 }
 
-// Pointer события
-box.addEventListener("pointerdown", e=>{
-  unlockAudio();
-  pointerDown=true; touchedStrings.clear(); handle(e);
-});
-
-document.addEventListener("pointermove", e=>{
-  if(!pointerDown) return; e.preventDefault(); handle(e);
-},{passive:false});
+// PointerMove/Up
+document.addEventListener("pointermove", e=>{ if(pointerDown){ e.preventDefault(); handle(e); }},{passive:false});
 document.addEventListener("pointerup", ()=>{ pointerDown=false; touchedStrings.clear(); });
 document.addEventListener("touchmove", e=>{ if(pointerDown) e.preventDefault(); },{passive:false});
 
@@ -194,7 +191,7 @@ const buttons=document.querySelectorAll(".chords button");
 buttons.forEach(btn=>{
   btn.addEventListener("pointerdown", e=>{
     e.preventDefault();
-    unlockAudio();
+    unlockAudio(e);
     pointerDown=false; touchedStrings.clear();
 
     const name=btn.dataset.chord;
