@@ -195,20 +195,20 @@ function playString(s){
 function handleStrum(e){
   // Находим ближайшую струну по вертикали
   const strings = Array.from(document.querySelectorAll(".string"));
-  let nearest = null;
+  let nearestString = null;
   let minDist = Infinity;
   strings.forEach(el=>{
     const rect = el.getBoundingClientRect();
-    const mid = (rect.top + rect.bottom)/2;
-    const dist = Math.abs(e.clientY - mid);
+    const midY = (rect.top + rect.bottom) / 2;
+    const dist = Math.abs(e.clientY - midY);
     if(dist < minDist){
       minDist = dist;
-      nearest = el.dataset.string;
+      nearestString = Number(el.dataset.string); // <-- важно как число
     }
   });
-  if(!nearest || touchedStrings.has(nearest)) return;
-  touchedStrings.add(nearest);
-  playString(nearest);
+  if(!nearestString || touchedStrings.has(nearestString)) return;
+  touchedStrings.add(nearestString);
+  playString(nearestString);
 }
 
 document.addEventListener("pointermove",e=>{ if(pointerDown){ e.preventDefault(); handleStrum(e); } },{passive:false});
