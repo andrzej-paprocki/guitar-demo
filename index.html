@@ -52,7 +52,7 @@ button { padding:6px 12px; font-size:14px; cursor:pointer; }
 </head>
 <body>
 
-<h1>Guitar 9.5</h1>
+<h1>Guitar 10</h1>
 
 <div class="melody">
   <input id="melodyInput" placeholder="6/3 5/2 d:6-1@200$Am">
@@ -130,7 +130,6 @@ function playSound(key){
   src.start(0);
 }
 
-// ======== Создание струн и ладов ========
 const box = document.getElementById("box");
 
 function getStringFromX(x){
@@ -167,7 +166,11 @@ for(let s=6;s>=1;s--){
       heldFrets[s]=f;
       fret.classList.add("active");
     });
-    const release=()=>{ delete heldFrets[s]; fret.classList.remove("active"); };
+
+    const release=()=>{ 
+      delete heldFrets[s]; 
+      fret.classList.remove("active"); 
+    };
     fret.addEventListener("pointerup",release);
     fret.addEventListener("pointerleave",release);
     fret.addEventListener("pointercancel",release);
@@ -190,7 +193,6 @@ for(let s=6;s>=1;s--){
   box.appendChild(stringEl);
 }
 
-// ======== Функции воспроизведения с подсветкой ========
 function playNote(s,f,chordName){
   let key=String(s);
   if(f!=null) key=`${s}-${f}`;
@@ -198,20 +200,17 @@ function playNote(s,f,chordName){
 
   playSound(key);
 
-  // 🔹 Подсветка струны
+  // Подсветка струны
   const strumEl=document.querySelector(`.string[data-string="${s}"] .strum`);
   if(strumEl){
     strumEl.classList.add("active");
     setTimeout(()=>strumEl.classList.remove("active"),150);
   }
 
-  // 🔹 Подсветка лада
+  // Подсветка лада — только если палец или аккорд удерживает
   if(f!=null){
     const fretEl=document.querySelector(`.fret[data-string="${s}"][data-fret="${f}"]`);
-    if(fretEl){
-      fretEl.classList.add("active");
-      setTimeout(()=>fretEl.classList.remove("active"),200);
-    }
+    if(fretEl) fretEl.classList.add("active");
   }
 }
 
@@ -233,7 +232,6 @@ function handleStrum(e){
   playString(s);
 }
 
-// ======== Обработчики движения ========
 document.addEventListener("pointermove",e=>{
   if(pointerDown){
     e.preventDefault();
@@ -246,26 +244,23 @@ document.addEventListener("pointerup",()=>{
   touchedStrings.clear();
 });
 
-// ======== Свайп из вне ========
+// Свайп снаружи
 document.addEventListener("pointerdown",e=>{
   const rect = box.getBoundingClientRect();
-  const margin = 60; // расширение зоны слева/справа
-  if(
-    e.clientX >= rect.left - margin &&
-    e.clientX <= rect.right + margin &&
-    e.clientY >= rect.top &&
-    e.clientY <= rect.bottom
-  ){
-    unlockAudio();
-    pointerDown = true;
-    touchedStrings.clear();
-    handleStrum(e); // 🔹 подсветка срабатывает
+  const margin = 60;
+  if(e.clientX >= rect.left - margin &&
+     e.clientX <= rect.right + margin &&
+     e.clientY >= rect.top &&
+     e.clientY <= rect.bottom){
+       unlockAudio();
+       pointerDown=true;
+       touchedStrings.clear();
+       handleStrum(e);
   }
 });
 
-// ======== Аккорды toggle ========
+// Аккорды toggle
 const buttons=document.querySelectorAll(".chords button");
-
 buttons.forEach(btn=>{
   btn.addEventListener("pointerdown",e=>{
     e.preventDefault();
