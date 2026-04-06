@@ -52,7 +52,7 @@ button { padding:6px 12px; font-size:14px; cursor:pointer; }
 </head>
 <body>
 
-<h1>Guitar 10.3</h1>
+<h1>Guitar 10.4</h1>
 
 <div class="melody">
   <input id="melodyInput" placeholder="6/3 5/2 d:6-1@200$Am">
@@ -165,7 +165,7 @@ for(let s=6;s>=1;s--){
       unlockAudio();
       heldFrets[s]=f;
       fret.classList.add("active");
-      playNote(s,f,null);
+      (s,f,null);
     });
 
     const release=()=>{ 
@@ -217,7 +217,16 @@ function playNote(s,f,chordName){
   // Подсветка лада — только если палец или аккорд удерживает
   if(fretToHighlight != null){
     const fretEl=document.querySelector(`.fret[data-string="${s}"][data-fret="${fretToHighlight}"]`);
-    if(fretEl) fretEl.classList.add("active");
+    if(fretEl){
+      fretEl.classList.add("active");
+      // Лад гаснет через 150 мс, как струна
+      setTimeout(()=>{
+        // Если палец или текущий удерживаемый аккорд не держат лад, гасим
+        if(heldFrets[s] !== fretToHighlight && !(currentChord && chords[currentChord]?.[s] === fretToHighlight)){
+          fretEl.classList.remove("active");
+        }
+      },150);
+    }
   }
 }
 
