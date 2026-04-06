@@ -310,50 +310,43 @@ document.getElementById("playBtn").onclick = () => {
   playMelody(text);
 };
 
-function playMelody(text){
-  currentChord=null;
-  buttons.forEach(b=>b.classList.remove("active"));
+// мелодия и бой
+function playMelody(seq){
+  // при начале проигрывания мелодии сбрасываем все аккорды
   document.querySelectorAll(".fret").forEach(f=>f.classList.remove("chord-active","active"));
+  buttons.forEach(b=>b.classList.remove("active"));
   for(let k in heldFrets) delete heldFrets[k];
+  currentChord = null;
 
-  const tokens = text.split(/\s+/);
-  let i = 0;
-
+  const notes = seq.trim().split(/\s+/);
+  let i=0;
   function step(){
-    if(i >= tokens.length){
-      document.querySelectorAll(".fret").forEach(f=>f.classList.remove("active"));
-      return;
-    }
-    const t = tokens[i];
+    if(i>=notes.length) return;
+    const token = notes[i];
 
-    if(t.startsWith("d") || t.startsWith("u")){
-      const dir = t[0];
-      const range = t.match(/:(\d+)-(\d+)/);
-      const speed = t.match(/@(\d+)/);
-      const chord = t.match(/\$(\w+)/);
+    if(token.toLowerCase()==='р'){ i++; return setTimeout(step,250); }
 
-      let s1=1,s2=6,sp=80,ch=null;
-      if(range){ s1 = +range[1]; s2 = +range[2]; }
-      if(speed) sp = +speed[1];
-      if(chord) ch = chord[1];
-
-      strum(dir,s1,s2,sp,ch);
-      i++;
-      setTimeout(step, sp*Math.abs(s2-s1+1));
-      return;
+    // бой
+    if(token.startsWith('d')||token.startsWith('u')){
+      const direction = token.startsWith('d')?"down":"up";
+      const range = token.match(/:(\d+)-(\d+)/);
+      const speed = token.match(/@(\d+)/);
+      const chordMatch = token.match(/\$(\w+)/i);
+      let start=1, end=6, spd=40, chordName=null;
+      if(range){ start=parseInt(range[1]); end=parseInt(range[2]); }
+      if(speed){ spd=parseInt(speed[1]); }
+      if(chordMatch){ chordName=chordMatch[1]; }
+      strum(direction,start,end,spd,chordName);
+      i++; return setTimeout(step,spd*Math.abs(end-start+1));
     }
 
-    if(t.includes("/")){
-      const [s,f] = t.split("/");
-      playNote(+s,+f,null);
-    } else if(/^[1-6]$/.test(t)){
-      playString(+t);
-    }
-
-    i++;
-    setTimeout(step,250);
+    // отдельные ноты
+    let s=null,f=null;
+    if(token.includes('/')) [s,f]=token.split('/');
+    else s=token;
+    if(/^[1-6]$/.test(s)) play(s,f,null);
+    i++; setTimeout(step,250);
   }
-
   step();
 }
 
