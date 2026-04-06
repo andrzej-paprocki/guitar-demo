@@ -52,7 +52,7 @@ button { padding:6px 12px; font-size:14px; cursor:pointer; }
 </head>
 <body>
 
-<h1>Guitar 10.5</h1>
+<h1>Guitar 10.6</h1>
 
 <div class="melody">
   <input id="melodyInput" placeholder="6/3 5/2 d:6-1@200$Am">
@@ -368,14 +368,18 @@ function playMelody(text){
 
 function strum(dir,s1,s2,sp,ch){
   let arr=[];
+  
+  // Если диапазон не указан, берём все струны
+  if(s1==null) s1 = (dir==="d"?6:1);
+  if(s2==null) s2 = (dir==="d"?1:6);
 
-  if(dir==="d"){ // вниз: от s1 к s2
-    if(s1<=s2){
-      for(let i=s1;i<=s2;i++) arr.push(i);
-    } else {
+  if(dir==="d"){
+    if(s1>=s2){
       for(let i=s1;i>=s2;i--) arr.push(i);
+    } else {
+      for(let i=s1;i<=s2;i++) arr.push(i);
     }
-  } else if(dir==="u"){ // вверх: от s1 к s2
+  } else if(dir==="u"){
     if(s1<=s2){
       for(let i=s1;i<=s2;i++) arr.push(i);
     } else {
