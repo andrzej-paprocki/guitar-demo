@@ -52,7 +52,7 @@ button { padding:6px 12px; font-size:14px; cursor:pointer; }
 </head>
 <body>
 
-<h1>Guitar 10.1</h1>
+<h1>Guitar 10.2</h1>
 
 <div class="melody">
   <input id="melodyInput" placeholder="6/3 5/2 d:6-1@200$Am">
@@ -196,8 +196,14 @@ for(let s=6;s>=1;s--){
 
 function playNote(s,f,chordName){
   let key=String(s);
-  if(f!=null) key=`${s}-${f}`;
-  else if(chordName && chords[chordName]?.[s]) key=`${s}-${chords[chordName][s]}`;
+  // Определяем лад: сначала явный f, потом chordName
+  let fretToHighlight = f;
+  if(fretToHighlight == null && chordName && chords[chordName]?.[s]){
+    fretToHighlight = chords[chordName][s];
+    key = `${s}-${fretToHighlight}`;
+  } else if(fretToHighlight != null){
+    key = `${s}-${fretToHighlight}`;
+  }
 
   playSound(key);
 
@@ -205,12 +211,12 @@ function playNote(s,f,chordName){
   const strumEl=document.querySelector(`.string[data-string="${s}"] .strum`);
   if(strumEl){
     strumEl.classList.add("active");
-    setTimeout(()=>strumEl?.classList.remove("active"),150);
+    setTimeout(()=>strumEl.classList.remove("active"),150);
   }
 
   // Подсветка лада — только если палец или аккорд удерживает
-  if(f!=null){
-    const fretEl=document.querySelector(`.fret[data-string="${s}"][data-fret="${f}"]`);
+  if(fretToHighlight != null){
+    const fretEl=document.querySelector(`.fret[data-string="${s}"][data-fret="${fretToHighlight}"]`);
     if(fretEl) fretEl.classList.add("active");
   }
 }
