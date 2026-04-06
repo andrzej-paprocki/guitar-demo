@@ -52,7 +52,7 @@ button { padding:6px 12px; font-size:14px; cursor:pointer; }
 </head>
 <body>
 
-<h1>Guitar 10</h1>
+<h1>Guitar 10.1</h1>
 
 <div class="melody">
   <input id="melodyInput" placeholder="6/3 5/2 d:6-1@200$Am">
@@ -244,18 +244,22 @@ document.addEventListener("pointerup",()=>{
   touchedStrings.clear();
 });
 
-// Свайп снаружи
-document.addEventListener("pointerdown",e=>{
+// Свайп снаружи — игнорируем input и кнопки
+document.addEventListener("pointerdown", e => {
+  if (e.target.closest("input, button")) return;
+
   const rect = box.getBoundingClientRect();
-  const margin = 60;
-  if(e.clientX >= rect.left - margin &&
-     e.clientX <= rect.right + margin &&
-     e.clientY >= rect.top &&
-     e.clientY <= rect.bottom){
-       unlockAudio();
-       pointerDown=true;
-       touchedStrings.clear();
-       handleStrum(e);
+  const margin = 60; 
+  if (
+    e.clientX >= rect.left - margin &&
+    e.clientX <= rect.right + margin &&
+    e.clientY >= rect.top &&
+    e.clientY <= rect.bottom
+  ) {
+    unlockAudio();
+    pointerDown = true;
+    touchedStrings.clear();
+    handleStrum(e);
   }
 });
 
@@ -291,6 +295,56 @@ buttons.forEach(btn=>{
     }
   });
 });
+
+// Пользовательская мелодия
+document.getElementById("playBtn").onclick = () => {
+  const text = document.getElementById("melodyInput").value.trim();
+  if (!text) return;
+  playMelody(text);
+};
+
+function playMelody(text){
+  buttons.forEach(b=>b.classList.remove("active"));
+  currentChord=null;
+  for(let k in heldFrets) delete heldFrets[k];
+
+  const tokens=text.trim().split(/\s+/);
+  let i=0;
+
+  function step(){
+    if(i>=tokens.length) return;
+    const t=tokens[i];
+    if(t.startsWith("d")||t.startsWith("u")){
+      const dir=t[0];
+      const range=t.match(/:(\d+)-(\d+)/);
+      const speed=t.match(/@(\d+)/);
+      const chord=t.match(/\$(\w+)/);
+      let s1=1,s2=6,sp=80,ch=null;
+      if(range){ s1=+range[1]; s2=+range[2]; }
+      if(speed) sp=+speed[1];
+      if(chord) ch=chord[1];
+      strum(dir,s1,s2,sp,ch);
+      i++;
+      setTimeout(step,sp*Math.abs(s2-s1+1));
+      return;
+    }
+    if(t.includes("/")){
+      const [s,f]=t.split("/");
+      playNote(+s,+f,null);
+    } else if(/^[1-6]$/.test(t)) playString(+t);
+    i++;
+    setTimeout(step,250);
+  }
+  step();
+}
+
+function strum(dir,s1,s2,sp,ch){
+  let arr=[]; 
+  if(s1<=s2){ for(let i=s1;i<=s2;i++) arr.push(i); }
+  else{ for(let i=s1;i>=s2;i--) arr.push(i); }
+  if(dir==="d") arr.reverse();
+  arr.forEach((s,i)=>setTimeout(()=>playNote(s,null,ch),i*sp));
+}
 
 document.addEventListener("contextmenu",e=>e.preventDefault());
 </script>
