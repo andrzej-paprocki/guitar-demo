@@ -52,7 +52,7 @@ button { padding:6px 12px; font-size:14px; cursor:pointer; }
 </head>
 <body>
 
-<h1>Guitar 9.2</h1>
+<h1>Guitar 9.3</h1>
 
 <div class="melody">
   <input id="melodyInput" placeholder="6/3 5/2 d:6-1@200$Am">
@@ -79,7 +79,6 @@ const heldFrets = {};
 let currentChord = null;
 let pointerDown = false;
 const touchedStrings = new Set();
-let lastX = null;
 
 const chords = {
   "Am": {2:1,3:2,4:2},
@@ -92,7 +91,22 @@ const chords = {
   "D": {1:2,2:3,3:2}
 };
 
-const SOUND_FILES = { /* без изменений */ };
+const SOUND_FILES = {
+  "1":"sounds/1.mp3","2":"sounds/2.mp3","3":"sounds/3.mp3",
+  "4":"sounds/4.mp3","5":"sounds/5.mp3","6":"sounds/6.mp3",
+  "1-1":"sounds/1-1.mp3","1-2":"sounds/1-2.mp3","1-3":"sounds/1-3.mp3",
+  "1-4":"sounds/1-4.mp3","1-5":"sounds/1-5.mp3","1-6":"sounds/1-6.mp3",
+  "2-1":"sounds/2-1.mp3","2-2":"sounds/2-2.mp3","2-3":"sounds/2-3.mp3",
+  "2-4":"sounds/2-4.mp3","2-5":"sounds/2-5.mp3","2-6":"sounds/2-6.mp3",
+  "3-1":"sounds/3-1.mp3","3-2":"sounds/3-2.mp3","3-3":"sounds/3-3.mp3",
+  "3-4":"sounds/3-4.mp3","3-5":"sounds/3-5.mp3","3-6":"sounds/3-6.mp3",
+  "4-1":"sounds/4-1.mp3","4-2":"sounds/4-2.mp3","4-3":"sounds/4-3.mp3",
+  "4-4":"sounds/4-4.mp3","4-5":"sounds/4-5.mp3","4-6":"sounds/4-6.mp3",
+  "5-1":"sounds/5-1.mp3","5-2":"sounds/5-2.mp3","5-3":"sounds/5-3.mp3",
+  "5-4":"sounds/5-4.mp3","5-5":"sounds/5-5.mp3","5-6":"sounds/5-6.mp3",
+  "6-1":"sounds/6-1.mp3","6-2":"sounds/6-2.mp3","6-3":"sounds/6-3.mp3",
+  "6-4":"sounds/6-4.mp3","6-5":"sounds/6-5.mp3","6-6":"sounds/6-6.mp3"
+};
 
 function unlockAudio(){
   if(audioCtx) return;
@@ -106,7 +120,8 @@ function playSound(key){
     fetch(SOUND_FILES[key])
       .then(r=>r.arrayBuffer())
       .then(buf=>audioCtx.decodeAudioData(buf))
-      .then(decoded=>{ audioBuffers[key]=decoded; playSound(key); });
+      .then(decoded=>{ audioBuffers[key]=decoded; playSound(key); })
+      .catch(err=>console.error("Audio error:", key, err));
     return;
   }
   const src = audioCtx.createBufferSource();
@@ -116,6 +131,24 @@ function playSound(key){
 }
 
 const box = document.getElementById("box");
+
+function getStringFromX(x){
+  const strings = [...document.querySelectorAll(".string")];
+  let closest = null;
+  let minDist = Infinity;
+
+  strings.forEach(str=>{
+    const rect = str.getBoundingClientRect();
+    const center = rect.left + rect.width/2;
+    const dist = Math.abs(x - center);
+    if(dist < minDist){
+      minDist = dist;
+      closest = str;
+    }
+  });
+
+  return closest?.dataset.string;
+}
 
 for(let s=6;s>=1;s--){
   const stringEl=document.createElement("div");
@@ -147,8 +180,15 @@ for(let s=6;s>=1;s--){
   const strum=document.createElement("div");
   strum.className="strum";
   strum.dataset.string=s;
-  stringEl.appendChild(strum);
 
+  strum.addEventListener("pointerdown",e=>{
+    unlockAudio();
+    pointerDown=true;
+    touchedStrings.clear();
+    handleStrum(e);
+  });
+
+  stringEl.appendChild(strum);
   box.appendChild(stringEl);
 }
 
@@ -167,63 +207,21 @@ function playString(s){
 }
 
 function handleStrum(e){
-  const x = e.clientX;
+  let el=document.elementFromPoint(e.clientX,e.clientY);
+  let s=null;
 
-  if(lastX === null){
-    lastX = x;
-    return;
+  if(el && el.classList.contains("strum")){
+    s=el.dataset.string;
+  } else {
+    s = getStringFromX(e.clientX);
   }
 
-  const strings = [...document.querySelectorAll(".string")];
+  if(!s) return;
+  if(touchedStrings.has(s)) return;
 
-  const centers = strings.map(str=>{
-    const rect = str.getBoundingClientRect();
-    return {
-      s: str.dataset.string,
-      x: rect.left + rect.width/2
-    };
-  });
-
-  const movingRight = x > lastX;
-
-  let crossed = centers.filter(c=>{
-    return movingRight
-      ? (c.x > lastX && c.x <= x)
-      : (c.x < lastX && c.x >= x);
-  });
-
-  crossed.sort((a,b)=> movingRight ? a.x - b.x : b.x - a.x);
-
-  crossed.forEach(c=>{
-    if(!touchedStrings.has(c.s)){
-      touchedStrings.add(c.s);
-      playString(c.s);
-    }
-  });
-
-  lastX = x;
+  touchedStrings.add(s);
+  playString(s);
 }
-
-// 🔥 главный фикс — pointerdown на ВСЕМ документе
-document.addEventListener("pointerdown",e=>{
-  unlockAudio();
-
-  const rect = box.getBoundingClientRect();
-
-  // проверяем что палец рядом с гитарой (расширенная зона)
-  const margin = 80;
-
-  if(
-    e.clientX >= rect.left - margin &&
-    e.clientX <= rect.right + margin &&
-    e.clientY >= rect.top &&
-    e.clientY <= rect.bottom
-  ){
-    pointerDown = true;
-    touchedStrings.clear();
-    lastX = e.clientX;
-  }
-});
 
 document.addEventListener("pointermove",e=>{
   if(pointerDown){
@@ -235,10 +233,27 @@ document.addEventListener("pointermove",e=>{
 document.addEventListener("pointerup",()=>{
   pointerDown=false;
   touchedStrings.clear();
-  lastX = null;
 });
 
-// toggle аккорды
+// 🔥 ГЛАВНЫЙ ФИКС
+document.addEventListener("pointerdown",e=>{
+  const rect = box.getBoundingClientRect();
+  const margin = 60;
+
+  if(
+    e.clientX >= rect.left - margin &&
+    e.clientX <= rect.right + margin &&
+    e.clientY >= rect.top &&
+    e.clientY <= rect.bottom
+  ){
+    unlockAudio();
+    pointerDown = true;
+    touchedStrings.clear();
+    handleStrum(e);
+  }
+});
+
+// аккорды toggle
 const buttons=document.querySelectorAll(".chords button");
 
 buttons.forEach(btn=>{
