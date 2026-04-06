@@ -52,7 +52,7 @@ button { padding:6px 12px; font-size:14px; cursor:pointer; }
 </head>
 <body>
 
-<h1>Guitar 10.1</h1>
+<h1>Guitar 10.2</h1>
 
 <div class="melody">
   <input id="melodyInput" placeholder="6/3 5/2 d:6-1@200$Am">
@@ -200,14 +200,12 @@ function playNote(s,f,chordName){
 
   playSound(key);
 
-  // Подсветка струны
   const strumEl=document.querySelector(`.string[data-string="${s}"] .strum`);
   if(strumEl){
     strumEl.classList.add("active");
     setTimeout(()=>strumEl.classList.remove("active"),150);
   }
 
-  // Подсветка лада — только если палец или аккорд удерживает
   if(f!=null){
     const fretEl=document.querySelector(`.fret[data-string="${s}"][data-fret="${f}"]`);
     if(fretEl) fretEl.classList.add("active");
@@ -244,10 +242,8 @@ document.addEventListener("pointerup",()=>{
   touchedStrings.clear();
 });
 
-// Свайп снаружи — игнорируем input и кнопки
 document.addEventListener("pointerdown", e => {
   if (e.target.closest("input, button")) return;
-
   const rect = box.getBoundingClientRect();
   const margin = 60; 
   if (
@@ -304,15 +300,21 @@ document.getElementById("playBtn").onclick = () => {
 };
 
 function playMelody(text){
+  // Сбрасываем все аккорды
+  currentChord = null;
   buttons.forEach(b=>b.classList.remove("active"));
-  currentChord=null;
+  document.querySelectorAll(".fret").forEach(f=>f.classList.remove("chord-active","active"));
   for(let k in heldFrets) delete heldFrets[k];
 
   const tokens=text.trim().split(/\s+/);
   let i=0;
 
   function step(){
-    if(i>=tokens.length) return;
+    if(i>=tokens.length){
+      // После завершения мелодии гасим все подсветки ладов
+      document.querySelectorAll(".fret").forEach(f=>f.classList.remove("active"));
+      return;
+    }
     const t=tokens[i];
     if(t.startsWith("d")||t.startsWith("u")){
       const dir=t[0];
