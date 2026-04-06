@@ -52,7 +52,7 @@ button { padding:6px 12px; font-size:14px; cursor:pointer; }
 </head>
 <body>
 
-<h1>Guitar 9.2</h1>
+<h1>Guitar 9</h1>
 
 <div class="melody">
   <input id="melodyInput" placeholder="6/3 5/2 d:6-1@200$Am">
@@ -209,21 +209,49 @@ function playString(s){
   playNote(s,f,null);
 }
 
-function handleStrum(e){
-  let el=document.elementFromPoint(e.clientX,e.clientY);
-  let s=null;
+let lastX = null;
 
-  if(el && el.classList.contains("strum")){
-    s=el.dataset.string;
-  } else {
-    s = getStringFromX(e.clientX);
+function handleStrum(e){
+  const x = e.clientX;
+
+  // первый кадр — просто запоминаем
+  if(lastX === null){
+    lastX = x;
+    return;
   }
 
-  if(!s) return;
-  if(touchedStrings.has(s)) return;
+  const strings = [...document.querySelectorAll(".string")];
 
-  touchedStrings.add(s);
-  playString(s);
+  // получаем центры всех струн
+  const centers = strings.map(str=>{
+    const rect = str.getBoundingClientRect();
+    return {
+      s: str.dataset.string,
+      x: rect.left + rect.width/2
+    };
+  });
+
+  // определяем направление движения
+  const movingRight = x > lastX;
+
+  // находим все струны, которые пересекли
+  let crossed = centers.filter(c=>{
+    return movingRight
+      ? (c.x > lastX && c.x <= x)
+      : (c.x < lastX && c.x >= x);
+  });
+
+  // порядок воспроизведения
+  crossed.sort((a,b)=> movingRight ? a.x - b.x : b.x - a.x);
+
+  crossed.forEach(c=>{
+    if(!touchedStrings.has(c.s)){
+      touchedStrings.add(c.s);
+      playString(c.s);
+    }
+  });
+
+  lastX = x;
 }
 
 document.addEventListener("pointermove",e=>{
@@ -236,6 +264,7 @@ document.addEventListener("pointermove",e=>{
 document.addEventListener("pointerup",()=>{
   pointerDown=false;
   touchedStrings.clear();
+  lastX = null;
 });
 
 box.addEventListener("pointerdown",e=>{
