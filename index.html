@@ -52,7 +52,7 @@ button { padding:6px 12px; font-size:14px; cursor:pointer; }
 </head>
 <body>
 
-<h1>Guitar 10.15</h1>
+<h1>Guitar 10.16</h1>
 
 <div class="melody">
   <input id="melodyInput" placeholder="6/3 5/2 d:6-1@200$Am">
@@ -201,6 +201,11 @@ function playNote(s,f,chordName){
   if(f!=null){
     const fretEl=document.querySelector(`.fret[data-string="${s}"][data-fret="${f}"]`);
     if(fretEl) fretEl.classList.add("active");
+
+    // Гасим лад после проигрывания ноты
+    setTimeout(()=>{
+      if(!heldFrets[s]) fretEl.classList.remove("active");
+    }, 150);
   }
 }
 
@@ -341,13 +346,6 @@ function strum(s1,s2,sp,ch){
       let fret=null;
       if(ch && chords[ch]?.[s]) fret=chords[ch][s];
       playNote(s,fret,ch);
-
-      if(fret){
-        setTimeout(()=>{
-          const fretEl=document.querySelector(`.fret[data-string="${s}"][data-fret="${fret}"]`);
-          if(fretEl && !heldFrets[s]) fretEl.classList.remove("active");
-        }, sp);
-      }
     }, i*sp);
   }
 }
