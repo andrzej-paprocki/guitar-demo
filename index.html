@@ -52,7 +52,7 @@ button { padding:6px 12px; font-size:14px; cursor:pointer; }
 </head>
 <body>
 
-<h1>Guitar 10.11</h1>
+<h1>Guitar 10.12</h1>
 
 <div class="melody">
   <input id="melodyInput" placeholder="6/3 5/2 d:6-1@200$Am">
@@ -73,7 +73,7 @@ button { padding:6px 12px; font-size:14px; cursor:pointer; }
 </div>
 
 <script>
-let audioCtx = null; 
+let audioCtx = null;
 const audioBuffers = {};
 const heldFrets = {};
 let currentChord = null;
@@ -93,7 +93,7 @@ const chords = {
 
 const SOUND_FILES = {};
 for(let s=1;s<=6;s++){
-  SOUND_FILES[`${s}`] = `sounds/${s}.mp3`;
+  SOUND_FILES[s] = `sounds/${s}.mp3`;
   for(let f=1;f<=6;f++) SOUND_FILES[`${s}-${f}`]=`sounds/${s}-${f}.mp3`;
 }
 
@@ -137,7 +137,7 @@ function getStringFromX(x){
   return closest?.dataset.string;
 }
 
-// создаем струны и лады
+// Создание струн и ладов
 for(let s=6;s>=1;s--){
   const stringEl=document.createElement("div");
   stringEl.className="string";
@@ -155,6 +155,7 @@ for(let s=6;s>=1;s--){
       unlockAudio();
       heldFrets[s]=f;
       fret.classList.add("active");
+      playSound(`${s}-${f}`);
     });
 
     const release=()=>{ 
@@ -183,6 +184,7 @@ for(let s=6;s>=1;s--){
   box.appendChild(stringEl);
 }
 
+// Воспроизведение ноты
 function playNote(s,f,chordName){
   let key=String(s);
   if(f!=null) key=`${s}-${f}`;
@@ -190,20 +192,21 @@ function playNote(s,f,chordName){
 
   playSound(key);
 
-  // подсветка струны
+  // Подсветка струны
   const strumEl=document.querySelector(`.string[data-string="${s}"] .strum`);
   if(strumEl){
     strumEl.classList.add("active");
-    setTimeout(()=>strumEl.classList.remove("active"),150);
+    setTimeout(()=>strumEl?.classList.remove("active"),150);
   }
 
-  // подсветка лада — только если палец или аккорд удерживает
+  // Подсветка лада
   if(f!=null){
     const fretEl=document.querySelector(`.fret[data-string="${s}"][data-fret="${f}"]`);
     if(fretEl) fretEl.classList.add("active");
   }
 }
 
+// Воспроизведение струны
 function playString(s){
   let f=null;
   if(heldFrets[s]!=null) f=heldFrets[s];
@@ -211,6 +214,7 @@ function playString(s){
   playNote(s,f,null);
 }
 
+// Свайп
 function handleStrum(e){
   let s=null;
   const el=document.elementFromPoint(e.clientX,e.clientY);
@@ -223,10 +227,7 @@ function handleStrum(e){
 }
 
 document.addEventListener("pointermove",e=>{
-  if(pointerDown){
-    e.preventDefault();
-    handleStrum(e);
-  }
+  if(pointerDown){ e.preventDefault(); handleStrum(e); }
 },{passive:false});
 
 document.addEventListener("pointerup",()=>{
@@ -234,17 +235,17 @@ document.addEventListener("pointerup",()=>{
   touchedStrings.clear();
 });
 
+// Свайп извне
 document.addEventListener("pointerdown", e => {
   if (e.target.closest("input, button")) return;
-
   const rect = box.getBoundingClientRect();
-  const margin = 60; 
+  const margin = 60;
   if (
     e.clientX >= rect.left - margin &&
     e.clientX <= rect.right + margin &&
     e.clientY >= rect.top &&
     e.clientY <= rect.bottom
-  ) {
+  ){
     unlockAudio();
     pointerDown = true;
     touchedStrings.clear();
@@ -252,14 +253,13 @@ document.addEventListener("pointerdown", e => {
   }
 });
 
-// аккорды toggle
+// Аккорды toggle
 const buttons=document.querySelectorAll(".chords button");
 buttons.forEach(btn=>{
   btn.addEventListener("pointerdown",e=>{
     e.preventDefault();
     unlockAudio();
-    pointerDown=false;
-    touchedStrings.clear();
+    pointerDown=false; touchedStrings.clear();
 
     const name=btn.dataset.chord;
     if(currentChord===name){
@@ -285,46 +285,62 @@ buttons.forEach(btn=>{
   });
 });
 
-// пользовательская мелодия
+// Пользовательская мелодия
 document.getElementById("playBtn").onclick = () => {
   const text = document.getElementById("melodyInput").value.trim();
-  if (!text) return;
+  if(!text) return;
   playMelody(text);
 };
 
-// внутри playMelody
-if(t.startsWith("d")||t.startsWith("u")){
-  const dir=t[0];
-  const range=t.match(/:(\d+)-(\d+)/);
-  const speed=t.match(/@(\d+)/);
-  const chord=t.match(/\$(\w+)/);
-  let sp=80, s1=null, s2=null, ch=null;
-  if(speed) sp=+speed[1];
-  if(chord) ch=chord[1];
-  if(range){ s1=+range[1]; s2=+range[2]; }
+function playMelody(text){
+  buttons.forEach(b=>b.classList.remove("active"));
+  currentChord=null;
+  for(let k in heldFrets) delete heldFrets[k];
 
-  // если диапазон не указан
-  if(s1===null||s2===null){
-    if(dir==="d"){ s1=6; s2=1; } // вниз — с 6 по 1
-    else { s1=1; s2=6; }         // вверх — с 1 по 6
+  const tokens=text.trim().split(/\s+/);
+  let i=0;
+
+  function step(){
+    if(i>=tokens.length) return;
+    const t=tokens[i];
+
+    if(t.startsWith("d")||t.startsWith("u")){
+      const dir=t[0];
+      const range=t.match(/:(\d+)-(\d+)/);
+      const speed=t.match(/@(\d+)/);
+      const chord=t.match(/\$(\w+)/);
+      let s1=null, s2=null, sp=80, ch=null;
+      if(range){ s1=+range[1]; s2=+range[2]; }
+      if(speed) sp=+speed[1];
+      if(chord) ch=chord[1];
+      if(s1===null || s2===null){
+        if(dir==="d"){ s1=6; s2=1; } else { s1=1; s2=6; }
+      }
+      strum(s1,s2,sp,ch);
+      i++;
+      setTimeout(step, sp*Math.abs(s2-s1)+sp);
+      return;
+    }
+
+    if(t.includes("/")){
+      const [s,f]=t.split("/");
+      playNote(+s,+f,null);
+    } else if(/^[1-6]$/.test(t)) playString(+t);
+
+    i++;
+    setTimeout(step,250);
   }
-
-  strum(s1,s2,sp,ch);
-  i++;
-  setTimeout(step, sp*Math.abs(s2-s1)+sp);
-  return;
+  step();
 }
 
-// новая strum
 function strum(s1,s2,sp,ch){
-  let step = s1 <= s2 ? 1 : -1;
-  for(let s=s1,i=0; step>0 ? s<=s2 : s>=s2; s+=step, i++){
+  let step = s1<=s2?1:-1;
+  for(let s=s1,i=0; step>0 ? s<=s2 : s>=s2; s+=step,i++){
     setTimeout(()=>{
-      let fret = null;
-      if(ch && chords[ch]?.[s]) fret = chords[ch][s];
+      let fret=null;
+      if(ch && chords[ch]?.[s]) fret=chords[ch][s];
       playNote(s,fret,ch);
 
-      // гасим лад сразу после проигрывания
       if(fret){
         setTimeout(()=>{
           const fretEl=document.querySelector(`.fret[data-string="${s}"][data-fret="${fret}"]`);
@@ -337,5 +353,6 @@ function strum(s1,s2,sp,ch){
 
 document.addEventListener("contextmenu",e=>e.preventDefault());
 </script>
+
 </body>
 </html>
