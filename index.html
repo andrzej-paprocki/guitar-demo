@@ -52,7 +52,7 @@ button { padding:6px 12px; font-size:14px; cursor:pointer; }
 </head>
 <body>
 
-<h1>Guitar 9.4</h1>
+<h1>Guitar 9.5</h1>
 
 <div class="melody">
   <input id="melodyInput" placeholder="6/3 5/2 d:6-1@200$Am">
@@ -130,13 +130,13 @@ function playSound(key){
   src.start(0);
 }
 
+// ======== Создание струн и ладов ========
 const box = document.getElementById("box");
 
 function getStringFromX(x){
   const strings = [...document.querySelectorAll(".string")];
   let closest = null;
   let minDist = Infinity;
-
   strings.forEach(str=>{
     const rect = str.getBoundingClientRect();
     const center = rect.left + rect.width/2;
@@ -146,7 +146,6 @@ function getStringFromX(x){
       closest = str;
     }
   });
-
   return closest?.dataset.string;
 }
 
@@ -168,7 +167,6 @@ for(let s=6;s>=1;s--){
       heldFrets[s]=f;
       fret.classList.add("active");
     });
-
     const release=()=>{ delete heldFrets[s]; fret.classList.remove("active"); };
     fret.addEventListener("pointerup",release);
     fret.addEventListener("pointerleave",release);
@@ -192,11 +190,29 @@ for(let s=6;s>=1;s--){
   box.appendChild(stringEl);
 }
 
+// ======== Функции воспроизведения с подсветкой ========
 function playNote(s,f,chordName){
   let key=String(s);
   if(f!=null) key=`${s}-${f}`;
   else if(chordName && chords[chordName]?.[s]) key=`${s}-${chords[chordName][s]}`;
+
   playSound(key);
+
+  // 🔹 Подсветка струны
+  const strumEl=document.querySelector(`.string[data-string="${s}"] .strum`);
+  if(strumEl){
+    strumEl.classList.add("active");
+    setTimeout(()=>strumEl.classList.remove("active"),150);
+  }
+
+  // 🔹 Подсветка лада
+  if(f!=null){
+    const fretEl=document.querySelector(`.fret[data-string="${s}"][data-fret="${f}"]`);
+    if(fretEl){
+      fretEl.classList.add("active");
+      setTimeout(()=>fretEl.classList.remove("active"),200);
+    }
+  }
 }
 
 function playString(s){
@@ -207,22 +223,17 @@ function playString(s){
 }
 
 function handleStrum(e){
-  let el=document.elementFromPoint(e.clientX,e.clientY);
   let s=null;
-
-  if(el && el.classList.contains("strum")){
-    s=el.dataset.string;
-  } else {
-    s = getStringFromX(e.clientX);
-  }
-
-  if(!s) return;
-  if(touchedStrings.has(s)) return;
+  const el=document.elementFromPoint(e.clientX,e.clientY);
+  if(el && el.classList.contains("strum")) s=el.dataset.string;
+  else s = getStringFromX(e.clientX);
+  if(!s || touchedStrings.has(s)) return;
 
   touchedStrings.add(s);
   playString(s);
 }
 
+// ======== Обработчики движения ========
 document.addEventListener("pointermove",e=>{
   if(pointerDown){
     e.preventDefault();
@@ -235,11 +246,10 @@ document.addEventListener("pointerup",()=>{
   touchedStrings.clear();
 });
 
-// 🔥 ГЛАВНЫЙ ФИКС
+// ======== Свайп из вне ========
 document.addEventListener("pointerdown",e=>{
   const rect = box.getBoundingClientRect();
-  const margin = 60;
-
+  const margin = 60; // расширение зоны слева/справа
   if(
     e.clientX >= rect.left - margin &&
     e.clientX <= rect.right + margin &&
@@ -249,11 +259,11 @@ document.addEventListener("pointerdown",e=>{
     unlockAudio();
     pointerDown = true;
     touchedStrings.clear();
-    handleStrum(e);
+    handleStrum(e); // 🔹 подсветка срабатывает
   }
 });
 
-// аккорды toggle
+// ======== Аккорды toggle ========
 const buttons=document.querySelectorAll(".chords button");
 
 buttons.forEach(btn=>{
@@ -264,9 +274,8 @@ buttons.forEach(btn=>{
     touchedStrings.clear();
 
     const name=btn.dataset.chord;
-
-    if(currentChord === name){
-      currentChord = null;
+    if(currentChord===name){
+      currentChord=null;
       btn.classList.remove("active");
       document.querySelectorAll(".fret").forEach(f=>f.classList.remove("chord-active","active"));
       for(let k in heldFrets) delete heldFrets[k];
