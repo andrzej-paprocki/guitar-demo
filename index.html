@@ -52,7 +52,7 @@ button { padding:6px 12px; font-size:14px; cursor:pointer; }
 </head>
 <body>
 
-<h1>Guitar 9</h1>
+<h1>Guitar 9.1</h1>
 
 <div class="melody">
   <input id="melodyInput" placeholder="6/3 5/2 d:6-1@200$Am">
@@ -131,7 +131,7 @@ function playSound(key){
 
 const box = document.getElementById("box");
 
-// 🔥 НОВОЕ — определяем струну по X координате
+// 🔥 определяем ближайшую струну
 function getStringFromX(x){
   const strings = [...document.querySelectorAll(".string")];
   let closest = null;
@@ -210,7 +210,7 @@ function playString(s){
   playNote(s,f,null);
 }
 
-// 🔥 ИЗМЕНЕНО — теперь работает даже вне strum
+// 🔥 улучшенный свайп
 function handleStrum(e){
   let el=document.elementFromPoint(e.clientX,e.clientY);
   let s=null;
@@ -218,7 +218,6 @@ function handleStrum(e){
   if(el && el.classList.contains("strum")){
     s=el.dataset.string;
   } else {
-    // если не попали в strum — ищем ближайшую струну
     s = getStringFromX(e.clientX);
   }
 
@@ -241,12 +240,39 @@ document.addEventListener("pointerup",()=>{
   touchedStrings.clear();
 });
 
-// 🔥 ВАЖНО — теперь свайп можно начать где угодно внутри box
+// 🔥 можно начинать свайп где угодно
 box.addEventListener("pointerdown",e=>{
   unlockAudio();
   pointerDown=true;
   touchedStrings.clear();
   handleStrum(e);
+});
+
+// ✅ АККОРДЫ (исправлено)
+const buttons=document.querySelectorAll(".chords button");
+
+buttons.forEach(btn=>{
+  btn.addEventListener("pointerdown",e=>{
+    e.preventDefault();
+    unlockAudio();
+    pointerDown=false;
+    touchedStrings.clear();
+
+    const name=btn.dataset.chord;
+
+    document.querySelectorAll(".fret").forEach(f=>f.classList.remove("chord-active","active"));
+    buttons.forEach(b=>b.classList.remove("active"));
+    for(let k in heldFrets) delete heldFrets[k];
+
+    currentChord=name;
+    btn.classList.add("active");
+
+    for(let s in chords[name]){
+      heldFrets[s]=chords[name][s];
+      const el=document.querySelector(`.fret[data-string="${s}"][data-fret="${chords[name][s]}"]`);
+      el?.classList.add("chord-active");
+    }
+  });
 });
 
 document.addEventListener("contextmenu",e=>e.preventDefault());
