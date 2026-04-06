@@ -52,7 +52,7 @@ button { padding:6px 12px; font-size:14px; cursor:pointer; }
 </head>
 <body>
 
-<h1>Guitar 10.4</h1>
+<h1>Guitar 10.5</h1>
 
 <div class="melody">
   <input id="melodyInput" placeholder="6/3 5/2 d:6-1@200$Am">
@@ -368,30 +368,25 @@ function playMelody(text){
 
 function strum(dir,s1,s2,sp,ch){
   let arr=[];
-  if(s1 <= s2){ for(let i=s1;i<=s2;i++) arr.push(i); }
-  else{ for(let i=s1;i>=s2;i--) arr.push(i); }
-  if(dir==="d") arr.reverse();
-  arr.forEach((s,i)=>{
-    setTimeout(()=>{
-      // Передаем имя аккорда, если оно есть
-      if(ch) playNote(s,null,ch);
-      else playString(s);
-    }, i*sp);
-  });
+
+  if(dir==="d"){ // вниз: от s1 к s2
+    if(s1<=s2){
+      for(let i=s1;i<=s2;i++) arr.push(i);
+    } else {
+      for(let i=s1;i>=s2;i--) arr.push(i);
+    }
+  } else if(dir==="u"){ // вверх: от s1 к s2
+    if(s1<=s2){
+      for(let i=s1;i<=s2;i++) arr.push(i);
+    } else {
+      for(let i=s1;i>=s2;i--) arr.push(i);
+    }
+    arr.reverse();
+  }
+
+  arr.forEach((s,i)=>setTimeout(()=>playNote(s,null,ch),i*sp));
 }
-function strum(dir,s1,s2,sp,ch){
-  let arr=[];
-  if(s1 <= s2){ for(let i=s1;i<=s2;i++) arr.push(i); }
-  else{ for(let i=s1;i>=s2;i--) arr.push(i); }
-  if(dir==="d") arr.reverse();
-  arr.forEach((s,i)=>{
-    setTimeout(()=>{
-      // Передаем имя аккорда, если оно есть
-      if(ch) playNote(s,null,ch);
-      else playString(s);
-    }, i*sp);
-  });
-}
+
 
 document.addEventListener("contextmenu",e=>e.preventDefault());
 </script>
