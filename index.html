@@ -221,21 +221,29 @@ document.addEventListener("pointerup",()=>{
   touchedStrings.clear();
 });
 
-// Свайп извне
+// Свайп извне для #box
 document.addEventListener("pointerdown", e => {
   if (e.target.closest("input, button")) return;
+
   const rect = box.getBoundingClientRect();
-  const margin = 60;
   if (
-    e.clientX >= rect.left - margin &&
-    e.clientX <= rect.right + margin &&
+    e.clientX >= rect.left &&
+    e.clientX <= rect.right &&
     e.clientY >= rect.top &&
     e.clientY <= rect.bottom
   ){
+    // Разблокируем аудио
     unlockAudio();
+
     pointerDown = true;
     touchedStrings.clear();
-    handleStrum(e);
+
+    // Используем requestAnimationFrame, чтобы AudioContext успел активироваться
+    requestAnimationFrame(() => {
+      handleStrum(e);
+    });
+
+    e.preventDefault();
   }
 });
 
