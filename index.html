@@ -52,7 +52,7 @@ button { padding:6px 12px; font-size:14px; cursor:pointer; }
 </head>
 <body>
 
-<h1>Guitar 10.19</h1>
+<h1>Guitar 10.20</h1>
 
 <div class="melody">
   <input id="melodyInput" placeholder="6/3 5/2 d:6-1@200$Am">
@@ -134,12 +134,33 @@ for(let s=6;s>=1;s--){
     fret.dataset.string=s;
     fret.dataset.fret=f;
 
-    fret.addEventListener("",e=>{
+    // Перемещение пальца по ладам одной струны
+    fret.addEventListener("pointerdown", e=>{
       e.stopPropagation();
       unlockAudio();
+      if(heldFrets[s] && heldFrets[s]!=f){
+        // Снимаем старый лад
+        const prevFretEl = document.querySelector(`.fret[data-string="${s}"][data-fret="${heldFrets[s]}"]`);
+        prevFretEl?.classList.remove("active");
+      }
       heldFrets[s]=f;
       fret.classList.add("active");
-      // ❌ звук убран
+      playSound(`${s}-${f}`);
+      pointerDown = true;
+      touchedStrings.clear();
+    });
+
+    fret.addEventListener("pointerenter", e=>{
+      if(pointerDown){
+        unlockAudio();
+        if(heldFrets[s] && heldFrets[s]!=f){
+          const prevFretEl = document.querySelector(`.fret[data-string="${s}"][data-fret="${heldFrets[s]}"]`);
+          prevFretEl?.classList.remove("active");
+        }
+        heldFrets[s]=f;
+        fret.classList.add("active");
+        playSound(`${s}-${f}`);
+      }
     });
 
     const release=()=>{ 
@@ -157,9 +178,9 @@ for(let s=6;s>=1;s--){
   strum.className="strum";
   strum.dataset.string=s;
 
-  strum.addEventListener("",e=>{
+  strum.addEventListener("pointerdown",e=>{
     unlockAudio();
-    =true;
+    pointerDown=true;
     touchedStrings.clear();
     handleStrum(e);
   });
@@ -168,11 +189,28 @@ for(let s=6;s>=1;s--){
   box.appendChild(stringEl);
 }
 
+// Определение струны по X (для свайпа извне)
+function getStringFromX(x){
+  const strings = [...document.querySelectorAll(".string")];
+  let closest = null;
+  let minDist = Infinity;
+  strings.forEach(str=>{
+    const rect = str.getBoundingClientRect();
+    const center = rect.left + rect.width/2;
+    const dist = Math.abs(x - center);
+    if(dist < minDist){
+      minDist = dist;
+      closest = str;
+    }
+  });
+  return closest?.dataset.string;
+}
+
 // Воспроизведение ноты
 function playNote(s,f,chordName){
   let key=String(s);
   if(f!=null) key=`${s}-${f}`;
-  else if(chordName && chords[chordName]?.[s]) key=`${s}-${chords[chordName][s]}`;
+  else if(chordName && chords[chordName]?.[s]) key=`${s}-${chordName[s]}`;
 
   playSound(key);
 
@@ -200,11 +238,10 @@ function playString(s){
   playNote(s,f,null);
 }
 
-// ✅ исправленный strum
+// Свайп по струнам
 function handleStrum(e){
   const el=document.elementFromPoint(e.clientX,e.clientY);
   if(!el || !el.classList.contains("strum")) return;
-
   const s=el.dataset.string;
   if(!s || touchedStrings.has(s)) return;
 
@@ -212,34 +249,31 @@ function handleStrum(e){
   playString(s);
 }
 
-document.addEventListener("pointermove",e=>{
+document.addEventListener("pointermove", e=>{
   if(pointerDown){ e.preventDefault(); handleStrum(e); }
 },{passive:false});
 
-document.addEventListener("pointerup",()=>{
-  pointerDown=false;
-  touchedStrings.clear();
-});
+document.addEventListener("pointerup", ()=>{ pointerDown=false; touchedStrings.clear(); });
 
-// Свайп извне (по всей области box)
+// Свайп извне
 document.addEventListener("pointerdown", e => {
   if (e.target.closest("input, button")) return;
 
-  unlockAudio();          // 1. Обязательно разблокируем аудио
-  pointerDown = true;     
+  unlockAudio();
+  pointerDown = true;
   touchedStrings.clear();
 
-  const stringNum = getStringFromX(e.clientX); // 2. Определяем ближайшую струну
-  if (stringNum) {
+  const stringNum = getStringFromX(e.clientX);
+  if(stringNum){
     touchedStrings.add(stringNum);
-    playString(stringNum); // 3. Сразу проигрываем ноту
+    playString(stringNum);
   }
 });
-  
-// Аккорды (без изменений)
+
+// Аккорды
 const buttons=document.querySelectorAll(".chords button");
 buttons.forEach(btn=>{
-  btn.addEventListener("pointerdown",e=>{
+  btn.addEventListener("pointerdown", e=>{
     e.preventDefault();
     unlockAudio();
     pointerDown=false; touchedStrings.clear();
@@ -268,7 +302,7 @@ buttons.forEach(btn=>{
   });
 });
 
-// Мелодия (без изменений)
+// Мелодия
 document.getElementById("playBtn").onclick = () => {
   const text = document.getElementById("melodyInput").value.trim();
   if(!text) return;
