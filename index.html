@@ -121,22 +121,6 @@ function playSound(key){
 
 const box = document.getElementById("box");
 
-function getStringFromX(x){
-  const strings = [...document.querySelectorAll(".string")];
-  let closest = null;
-  let minDist = Infinity;
-  strings.forEach(str=>{
-    const rect = str.getBoundingClientRect();
-    const center = rect.left + rect.width/2;
-    const dist = Math.abs(x - center);
-    if(dist < minDist){
-      minDist = dist;
-      closest = str;
-    }
-  });
-  return closest?.dataset.string;
-}
-
 // Создание струн и ладов
 for(let s=6;s>=1;s--){
   const stringEl=document.createElement("div");
@@ -155,7 +139,7 @@ for(let s=6;s>=1;s--){
       unlockAudio();
       heldFrets[s]=f;
       fret.classList.add("active");
-      playSound(`${s}-${f}`);
+      // ❌ звук убран
     });
 
     const release=()=>{ 
@@ -188,7 +172,7 @@ for(let s=6;s>=1;s--){
 function playNote(s,f,chordName){
   let key=String(s);
   if(f!=null) key=`${s}-${f}`;
-  else if(chordName && chords[chordName]?.[s]) key=`${s}-${chordName[s]}`;
+  else if(chordName && chords[chordName]?.[s]) key=`${s}-${chords[chordName][s]}`;
 
   playSound(key);
 
@@ -202,7 +186,6 @@ function playNote(s,f,chordName){
     const fretEl=document.querySelector(`.fret[data-string="${s}"][data-fret="${f}"]`);
     if(fretEl) fretEl.classList.add("active");
 
-    // Гасим лад после проигрывания ноты
     setTimeout(()=>{
       if(!heldFrets[s]) fretEl.classList.remove("active");
     }, 150);
@@ -217,12 +200,12 @@ function playString(s){
   playNote(s,f,null);
 }
 
-// Свайп
+// ✅ исправленный strum
 function handleStrum(e){
-  let s=null;
   const el=document.elementFromPoint(e.clientX,e.clientY);
-  if(el && el.classList.contains("strum")) s=el.dataset.string;
-  else s = getStringFromX(e.clientX);
+  if(!el || !el.classList.contains("strum")) return;
+
+  const s=el.dataset.string;
   if(!s || touchedStrings.has(s)) return;
 
   touchedStrings.add(s);
@@ -256,7 +239,7 @@ document.addEventListener("pointerdown", e => {
   }
 });
 
-// Аккорды toggle
+// Аккорды (без изменений)
 const buttons=document.querySelectorAll(".chords button");
 buttons.forEach(btn=>{
   btn.addEventListener("pointerdown",e=>{
@@ -288,12 +271,11 @@ buttons.forEach(btn=>{
   });
 });
 
-// Пользовательская мелодия
+// Мелодия (без изменений)
 document.getElementById("playBtn").onclick = () => {
   const text = document.getElementById("melodyInput").value.trim();
   if(!text) return;
 
-  // Полностью отключаем все внешние аккорды и удерживаемые лады
   buttons.forEach(b=>b.classList.remove("active"));
   document.querySelectorAll(".fret").forEach(f=>f.classList.remove("chord-active","active"));
   currentChord=null;
