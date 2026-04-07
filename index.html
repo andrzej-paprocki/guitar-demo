@@ -52,7 +52,7 @@ button { padding:6px 12px; font-size:14px; cursor:pointer; }
 </head>
 <body>
 
-<h1>Guitar 10.17</h1>
+<h1>Guitar 10.18</h1>
 
 <div class="melody">
   <input id="melodyInput" placeholder="6/3 5/2 d:6-1@200$Am">
@@ -222,23 +222,41 @@ document.addEventListener("pointerup",()=>{
 });
 
 // Свайп извне
+// Свайп извне (по всей области box)
 document.addEventListener("pointerdown", e => {
   if (e.target.closest("input, button")) return;
+
   const rect = box.getBoundingClientRect();
   const margin = 60;
   if (
     e.clientX >= rect.left - margin &&
     e.clientX <= rect.right + margin &&
-    e.clientY >= rect.top &&
-    e.clientY <= rect.bottom
-  ){
+    e.clientY >= rect.top - margin &&
+    e.clientY <= rect.bottom + margin
+  ) {
     unlockAudio();
     pointerDown = true;
     touchedStrings.clear();
-    handleStrum(e);
+
+    // Сразу определить ближайшую струну и проиграть ноту
+    let closestString = null;
+    let minDist = Infinity;
+    document.querySelectorAll(".string").forEach(str => {
+      const r = str.getBoundingClientRect();
+      const centerX = r.left + r.width / 2;
+      const dist = Math.abs(e.clientX - centerX);
+      if (dist < minDist) {
+        minDist = dist;
+        closestString = str.dataset.string;
+      }
+    });
+
+    if (closestString) {
+      touchedStrings.add(closestString);
+      playString(closestString);
+    }
   }
 });
-
 // Аккорды (без изменений)
 const buttons=document.querySelectorAll(".chords button");
 buttons.forEach(btn=>{
