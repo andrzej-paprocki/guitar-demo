@@ -52,7 +52,7 @@ button { padding:6px 12px; font-size:14px; cursor:pointer; }
 </head>
 <body>
 
-<h1>Guitar 10.20</h1>
+<h1>Guitar 10.16</h1>
 
 <div class="melody">
   <input id="melodyInput" placeholder="6/3 5/2 d:6-1@200$Am">
@@ -134,33 +134,12 @@ for(let s=6;s>=1;s--){
     fret.dataset.string=s;
     fret.dataset.fret=f;
 
-    // Перемещение пальца по ладам одной струны
-    fret.addEventListener("pointerdown", e=>{
+    fret.addEventListener("pointerdown",e=>{
       e.stopPropagation();
       unlockAudio();
-      if(heldFrets[s] && heldFrets[s]!=f){
-        // Снимаем старый лад
-        const prevFretEl = document.querySelector(`.fret[data-string="${s}"][data-fret="${heldFrets[s]}"]`);
-        prevFretEl?.classList.remove("active");
-      }
       heldFrets[s]=f;
       fret.classList.add("active");
-      playSound(`${s}-${f}`);
-      pointerDown = true;
-      touchedStrings.clear();
-    });
-
-    fret.addEventListener("pointerenter", e=>{
-      if(pointerDown){
-        unlockAudio();
-        if(heldFrets[s] && heldFrets[s]!=f){
-          const prevFretEl = document.querySelector(`.fret[data-string="${s}"][data-fret="${heldFrets[s]}"]`);
-          prevFretEl?.classList.remove("active");
-        }
-        heldFrets[s]=f;
-        fret.classList.add("active");
-        playSound(`${s}-${f}`);
-      }
+      // ❌ звук убран
     });
 
     const release=()=>{ 
@@ -189,28 +168,11 @@ for(let s=6;s>=1;s--){
   box.appendChild(stringEl);
 }
 
-// Определение струны по X (для свайпа извне)
-function getStringFromX(x){
-  const strings = [...document.querySelectorAll(".string")];
-  let closest = null;
-  let minDist = Infinity;
-  strings.forEach(str=>{
-    const rect = str.getBoundingClientRect();
-    const center = rect.left + rect.width/2;
-    const dist = Math.abs(x - center);
-    if(dist < minDist){
-      minDist = dist;
-      closest = str;
-    }
-  });
-  return closest?.dataset.string;
-}
-
 // Воспроизведение ноты
 function playNote(s,f,chordName){
   let key=String(s);
   if(f!=null) key=`${s}-${f}`;
-  else if(chordName && chords[chordName]?.[s]) key=`${s}-${chordName[s]}`;
+  else if(chordName && chords[chordName]?.[s]) key=`${s}-${chords[chordName][s]}`;
 
   playSound(key);
 
@@ -238,10 +200,11 @@ function playString(s){
   playNote(s,f,null);
 }
 
-// Свайп по струнам
+// ✅ исправленный strum
 function handleStrum(e){
   const el=document.elementFromPoint(e.clientX,e.clientY);
   if(!el || !el.classList.contains("strum")) return;
+
   const s=el.dataset.string;
   if(!s || touchedStrings.has(s)) return;
 
@@ -249,31 +212,37 @@ function handleStrum(e){
   playString(s);
 }
 
-document.addEventListener("pointermove", e=>{
+document.addEventListener("pointermove",e=>{
   if(pointerDown){ e.preventDefault(); handleStrum(e); }
 },{passive:false});
 
-document.addEventListener("pointerup", ()=>{ pointerDown=false; touchedStrings.clear(); });
+document.addEventListener("pointerup",()=>{
+  pointerDown=false;
+  touchedStrings.clear();
+});
 
 // Свайп извне
 document.addEventListener("pointerdown", e => {
   if (e.target.closest("input, button")) return;
-
-  unlockAudio();
-  pointerDown = true;
-  touchedStrings.clear();
-
-  const stringNum = getStringFromX(e.clientX);
-  if(stringNum){
-    touchedStrings.add(stringNum);
-    playString(stringNum);
+  const rect = box.getBoundingClientRect();
+  const margin = 60;
+  if (
+    e.clientX >= rect.left - margin &&
+    e.clientX <= rect.right + margin &&
+    e.clientY >= rect.top &&
+    e.clientY <= rect.bottom
+  ){
+    unlockAudio();
+    pointerDown = true;
+    touchedStrings.clear();
+    handleStrum(e);
   }
 });
 
-// Аккорды
+// Аккорды (без изменений)
 const buttons=document.querySelectorAll(".chords button");
 buttons.forEach(btn=>{
-  btn.addEventListener("pointerdown", e=>{
+  btn.addEventListener("pointerdown",e=>{
     e.preventDefault();
     unlockAudio();
     pointerDown=false; touchedStrings.clear();
@@ -302,7 +271,7 @@ buttons.forEach(btn=>{
   });
 });
 
-// Мелодия
+// Мелодия (без изменений)
 document.getElementById("playBtn").onclick = () => {
   const text = document.getElementById("melodyInput").value.trim();
   if(!text) return;
