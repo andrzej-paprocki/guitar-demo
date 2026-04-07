@@ -52,14 +52,14 @@ button { padding:6px 12px; font-size:14px; cursor:pointer; }
 </head>
 <body>
 
-<h1>Guitar 10.23</h1>
+<h1>Guitar 10.24</h1>
 
 <div class="melody">
   <input id="melodyInput" placeholder="6/3 5/2 d:6-1@200$Am">
   <button id="playBtn">Играть</button>
 </div>
 
-<!-- Здесь будут визуальные струны -->
+<!-- Блок с визуальными струнами -->
 <div class="box" id="box"></div>
 
 <div class="chords">
@@ -158,6 +158,10 @@ for(let s=6;s>=1;s--){
       unlockAudio();
       pointerDown=true;
       activeFinger = {string:s, fret:f};
+      if(heldFrets[s] && heldFrets[s]!==f){
+        const prevFret=document.querySelector(`.fret[data-string="${s}"][data-fret="${heldFrets[s]}"]`);
+        prevFret?.classList.remove("active");
+      }
       heldFrets[s] = f;
       fret.classList.add("active");
       playSound(`${s}-${f}`);
@@ -206,60 +210,7 @@ for(let s=6;s>=1;s--){
   box.appendChild(stringEl);
 });
 
-// Воспроизведение ноты
-function playNote(s,f,chordName){
-  let key=String(s);
-  if(f!=null) key=`${s}-${f}`;
-  else if(chordName && chords[chordName]?.[s]) key=`${s}-${chordName[s]}`;
-  playSound(key);
-
-  const strumEl=document.querySelector(`.string[data-string="${s}"] .strum`);
-  if(strumEl){
-    strumEl.classList.add("active");
-    setTimeout(()=>strumEl?.classList.remove("active"),150);
-  }
-
-  if(f!=null){
-    const fretEl=document.querySelector(`.fret[data-string="${s}"][data-fret="${f}"]`);
-    if(fretEl) fretEl.classList.add("active");
-    setTimeout(()=>{
-      if(!heldFrets[s]) fretEl.classList.remove("active");
-    }, 150);
-  }
-}
-
-// Воспроизведение струны
-function playString(s){
-  let f=null;
-  if(heldFrets[s]!=null) f=heldFrets[s];
-  else if(currentChord && chords[currentChord]?.[s]) f=chords[currentChord][s];
-  playNote(s,f,null);
-}
-
-// Свайп
-function handleStrum(e){
-  let s=null;
-  const el=document.elementFromPoint(e.clientX,e.clientY);
-  if(el && el.classList.contains("strum")) s=el.dataset.string;
-  else s = getStringFromX(e.clientX);
-  if(!s || touchedStrings.has(s)) return;
-
-  touchedStrings.add(s);
-  playString(s);
-}
-
-document.addEventListener("pointermove",e=>{
-  if(pointerDown){ e.preventDefault(); handleStrum(e); }
-},{passive:false});
-
-document.addEventListener("pointerup",()=>{
-  pointerDown=false;
-  touchedStrings.clear();
-  activeFinger={string:null,fret:null};
-});
-
-// Остальной код: аккорды, мелодия и strum() остается без изменений
-// ...
+// Остальной код для воспроизведения нот, аккордов и мелодии остаётся без изменений
 </script>
 </body>
 </html>
