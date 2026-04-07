@@ -52,7 +52,7 @@ button { padding:6px 12px; font-size:14px; cursor:pointer; }
 </head>
 <body>
 
-<h1>Guitar 10.20</h1>
+<h1>Guitar 10.21</h1>
 
 <div class="melody">
   <input id="melodyInput" placeholder="6/3 5/2 d:6-1@200$Am">
@@ -134,21 +134,41 @@ for(let s=6;s>=1;s--){
     fret.dataset.string=s;
     fret.dataset.fret=f;
 
-    fret.addEventListener("pointerdown",e=>{
+    // нажатие пальцем на лад (только фиксация)
+    fret.addEventListener("pointerdown", e => {
       e.stopPropagation();
       unlockAudio();
-      heldFrets[s]=f;
+      pointerDown=true;
+      touchedStrings.clear();
+      heldFrets[s] = +f;
       fret.classList.add("active");
-      // ❌ звук убран
     });
 
-    const release=()=>{ 
+    // перемещение пальца по ладам
+    fret.addEventListener("pointermove", e => {
+      if (!pointerDown) return;
+      const sStr = fret.dataset.string;
+      const fCurrent = heldFrets[sStr];
+      const fNew = +fret.dataset.fret;
+      if (fCurrent !== fNew) {
+        // выключаем предыдущий лад
+        const prevFret = document.querySelector(`.fret[data-string="${sStr}"][data-fret="${fCurrent}"]`);
+        prevFret?.classList.remove("active");
+        // активируем новый
+        heldFrets[sStr] = fNew;
+        fret.classList.add("active");
+        playSound(`${sStr}-${fNew}`);
+      }
+    });
+
+    const release = () => { 
       delete heldFrets[s]; 
       fret.classList.remove("active"); 
+      pointerDown=false;
     };
-    fret.addEventListener("pointerup",release);
-    fret.addEventListener("pointerleave",release);
-    fret.addEventListener("pointercancel",release);
+    fret.addEventListener("pointerup", release);
+    fret.addEventListener("pointerleave", release);
+    fret.addEventListener("pointercancel", release);
 
     stringEl.appendChild(fret);
   }
@@ -166,7 +186,7 @@ for(let s=6;s>=1;s--){
 
   stringEl.appendChild(strum);
   box.appendChild(stringEl);
-}
+});
 
 // Воспроизведение ноты
 function playNote(s,f,chordName){
@@ -185,7 +205,6 @@ function playNote(s,f,chordName){
   if(f!=null){
     const fretEl=document.querySelector(`.fret[data-string="${s}"][data-fret="${f}"]`);
     if(fretEl) fretEl.classList.add("active");
-
     setTimeout(()=>{
       if(!heldFrets[s]) fretEl.classList.remove("active");
     }, 150);
@@ -200,7 +219,7 @@ function playString(s){
   playNote(s,f,null);
 }
 
-// ✅ исправленный strum
+// исправленный strum
 function handleStrum(e){
   const el=document.elementFromPoint(e.clientX,e.clientY);
   if(!el || !el.classList.contains("strum")) return;
@@ -239,7 +258,7 @@ document.addEventListener("pointerdown", e => {
   }
 });
 
-// Аккорды (без изменений)
+// Аккорды
 const buttons=document.querySelectorAll(".chords button");
 buttons.forEach(btn=>{
   btn.addEventListener("pointerdown",e=>{
@@ -271,7 +290,7 @@ buttons.forEach(btn=>{
   });
 });
 
-// Мелодия (без изменений)
+// Мелодия
 document.getElementById("playBtn").onclick = () => {
   const text = document.getElementById("melodyInput").value.trim();
   if(!text) return;
