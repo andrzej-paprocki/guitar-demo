@@ -18,6 +18,17 @@ html, body {
 
 h1 { margin:10px; }
 
+/* Плавное появление */
+.fade-in {
+  opacity:0;
+  transform:translateY(10px);
+  transition: all 0.5s ease;
+}
+.fade-in.show {
+  opacity:1;
+  transform:translateY(0);
+}
+
 .box { display:flex; gap:15px; }
 
 .string {
@@ -27,6 +38,10 @@ h1 { margin:10px; }
   height:60vh;
   border:2px solid black;
   background:lightgrey;
+  transition: transform 0.1s;
+}
+.string:active {
+  transform:scale(0.97);
 }
 
 .fret { flex:0 0 8%; border-bottom:1px solid rgba(0,0,0,0.2); display:flex; align-items:center; justify-content:center; }
@@ -53,33 +68,43 @@ button { padding:6px 12px; font-size:14px; cursor:pointer; }
 #welcome {
   position:fixed;
   top:0; left:0; width:100%; height:100%;
-  background:white; display:flex; flex-direction:column;
-  justify-content:center; align-items:center;
+  background:white;
+  display:flex;
+  flex-direction:column;
+  justify-content:center;
+  align-items:center;
   z-index:9999;
+  transition: all 0.4s ease;
 }
+#welcome.hide {
+  opacity:0;
+  transform:scale(1.1);
+  pointer-events:none;
+}
+
 #welcome h2 { margin-bottom:20px; }
-#welcome button { padding:10px 20px; font-size:16px; cursor:pointer; }
-#welcome img { width:300px; height:auto; margin-bottom:20px; }
+#welcome button { padding:10px 20px; font-size:18px; cursor:pointer; }
+#welcome .icon { font-size:70px; margin-bottom:20px; }
 </style>
 </head>
 <body>
 
 <div id="welcome">
-  <img src="img/guitar.png" alt="Guitar">
-  <h2>Guitar Universal Audio</h2>
+  <div class="icon">🎸</div>
+  <h2>Guitar Universal Audio 1</h2>
   <button id="okBtn">OK</button>
 </div>
 
-<h1>Guitar 10.17</h1>
+<h1 class="fade-in">Guitar 10.18</h1>
 
-<div class="melody">
+<div class="melody fade-in">
   <input id="melodyInput" placeholder="6/3 5/2 d:6-1@200$Am">
   <button id="playBtn">Играть</button>
 </div>
 
-<div class="box" id="box" style="display:none;"></div>
+<div class="box fade-in" id="box" style="display:none;"></div>
 
-<div class="chords" style="display:none;">
+<div class="chords fade-in" style="display:none;">
   <button data-chord="Am">Am</button>
   <button data-chord="Em">Em</button>
   <button data-chord="C">C</button>
@@ -127,8 +152,7 @@ function playSound(key){
     fetch(SOUND_FILES[key])
       .then(r=>r.arrayBuffer())
       .then(buf=>audioCtx.decodeAudioData(buf))
-      .then(decoded=>{ audioBuffers[key]=decoded; playSound(key); })
-      .catch(err=>console.error("Audio error:", key, err));
+      .then(decoded=>{ audioBuffers[key]=decoded; playSound(key); });
     return;
   }
   const src = audioCtx.createBufferSource();
@@ -140,10 +164,14 @@ function playSound(key){
 function initGuitar(){
   const box = document.getElementById("box");
   const chordsDiv = document.querySelector(".chords");
+
   box.style.display="flex";
   chordsDiv.style.display="grid";
 
-  // Создание струн и ладов
+  setTimeout(()=>{
+    document.querySelectorAll(".fade-in").forEach(el=>el.classList.add("show"));
+  },50);
+
   for(let s=6;s>=1;s--){
     const stringEl=document.createElement("div");
     stringEl.className="string";
@@ -163,10 +191,7 @@ function initGuitar(){
         fret.classList.add("active");
       });
 
-      const release=()=>{ 
-        delete heldFrets[s]; 
-        fret.classList.remove("active"); 
-      };
+      const release=()=>{ delete heldFrets[s]; fret.classList.remove("active"); };
       fret.addEventListener("pointerup",release);
       fret.addEventListener("pointerleave",release);
       fret.addEventListener("pointercancel",release);
@@ -189,41 +214,23 @@ function initGuitar(){
     box.appendChild(stringEl);
   }
 
-  // Воспроизведение ноты
-  function playNote(s,f,chordName){
-    let key=String(s);
-    if(f!=null) key=`${s}-${f}`;
-    else if(chordName && chords[chordName]?.[s]) key=`${s}-${chords[chordName][s]}`;
-
+  function playNote(s,f){
+    let key = f!=null ? `${s}-${f}` : `${s}`;
     playSound(key);
-
-    const strumEl=document.querySelector(`.string[data-string="${s}"] .strum`);
-    if(strumEl){
-      strumEl.classList.add("active");
-      setTimeout(()=>strumEl?.classList.remove("active"),150);
-    }
-
-    if(f!=null){
-      const fretEl=document.querySelector(`.fret[data-string="${s}"][data-fret="${f}"]`);
-      if(fretEl) fretEl.classList.add("active");
-      setTimeout(()=>{ if(!heldFrets[s]) fretEl.classList.remove("active"); },150);
-    }
   }
 
   function playString(s){
     let f=null;
     if(heldFrets[s]!=null) f=heldFrets[s];
     else if(currentChord && chords[currentChord]?.[s]) f=chords[currentChord][s];
-    playNote(s,f,null);
+    playNote(s,f);
   }
 
   function handleStrum(e){
     const el=document.elementFromPoint(e.clientX,e.clientY);
     if(!el || !el.classList.contains("strum")) return;
-
     const s=el.dataset.string;
     if(!s || touchedStrings.has(s)) return;
-
     touchedStrings.add(s);
     playString(s);
   }
@@ -237,7 +244,6 @@ function initGuitar(){
     touchedStrings.clear();
   });
 
-  // Свайп извне
   document.addEventListener("pointerdown", e => {
     if (e.target.closest("input, button")) return;
     const rect = box.getBoundingClientRect();
@@ -254,108 +260,19 @@ function initGuitar(){
       handleStrum(e);
     }
   });
-
-  // Аккорды
-  const buttons=document.querySelectorAll(".chords button");
-  buttons.forEach(btn=>{
-    btn.addEventListener("pointerdown",e=>{
-      e.preventDefault();
-      unlockAudio();
-      pointerDown=false; touchedStrings.clear();
-
-      const name=btn.dataset.chord;
-      if(currentChord===name){
-        currentChord=null;
-        btn.classList.remove("active");
-        document.querySelectorAll(".fret").forEach(f=>f.classList.remove("chord-active","active"));
-        for(let k in heldFrets) delete heldFrets[k];
-        return;
-      }
-
-      document.querySelectorAll(".fret").forEach(f=>f.classList.remove("chord-active","active"));
-      buttons.forEach(b=>b.classList.remove("active"));
-      for(let k in heldFrets) delete heldFrets[k];
-
-      currentChord=name;
-      btn.classList.add("active");
-
-      for(let s in chords[name]){
-        heldFrets[s]=chords[name][s];
-        const el=document.querySelector(`.fret[data-string="${s}"][data-fret="${chords[name][s]}"]`);
-        el?.classList.add("chord-active");
-      }
-    });
-  });
-
-  // Мелодия
-  document.getElementById("playBtn").onclick = () => {
-    const text = document.getElementById("melodyInput").value.trim();
-    if(!text) return;
-
-    buttons.forEach(b=>b.classList.remove("active"));
-    document.querySelectorAll(".fret").forEach(f=>f.classList.remove("chord-active","active"));
-    currentChord=null;
-    for(let k in heldFrets) delete heldFrets[k];
-
-    playMelody(text);
-  };
-
-  function playMelody(text){
-    const tokens=text.trim().split(/\s+/);
-    let i=0;
-
-    function step(){
-      if(i>=tokens.length) return;
-      const t=tokens[i];
-
-      if(t.startsWith("d")||t.startsWith("u")){
-        const dir=t[0];
-        const range=t.match(/:(\d+)-(\d+)/);
-        const speed=t.match(/@(\d+)/);
-        const chord=t.match(/\$(\w+)/);
-        let s1=null, s2=null, sp=80, ch=null;
-        if(range){ s1=+range[1]; s2=+range[2]; }
-        if(speed) sp=+speed[1];
-        if(chord) ch=chord[1];
-        if(s1===null || s2===null){
-          if(dir==="d"){ s1=6; s2=1; } else { s1=1; s2=6; }
-        }
-        strum(s1,s2,sp,ch);
-        i++;
-        setTimeout(step, sp*Math.abs(s2-s1)+sp);
-        return;
-      }
-
-      if(t.includes("/")){
-        const [s,f]=t.split("/");
-        playNote(+s,+f,null);
-      } else if(/^[1-6]$/.test(t)) playString(+t);
-
-      i++;
-      setTimeout(step,250);
-    }
-    step();
-  }
-
-  function strum(s1,s2,sp,ch){
-    let step = s1<=s2?1:-1;
-    for(let s=s1,i=0; step>0 ? s<=s2 : s>=s2; s+=step,i++){
-      setTimeout(()=>{
-        let fret=null;
-        if(ch && chords[ch]?.[s]) fret=chords[ch][s];
-        playNote(s,fret,ch);
-      }, i*sp);
-    }
-  }
-
-  document.addEventListener("contextmenu",e=>e.preventDefault());
 }
 
-// Welcome screen
-document.getElementById("okBtn").onclick = () => {
-  document.getElementById("welcome").style.display="none";
-  initGuitar();
-};
+// welcome animation + запуск
+document.getElementById("okBtn").addEventListener("pointerdown", ()=>{
+  unlockAudio();
+  const w = document.getElementById("welcome");
+  w.classList.add("hide");
+
+  setTimeout(()=>{
+    w.style.display="none";
+    initGuitar();
+  }, 400);
+});
 </script>
 
 </body>
