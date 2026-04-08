@@ -68,6 +68,7 @@ h1 { margin:10px; }
 .fret { flex:0 0 8%; border-bottom:1px solid rgba(0,0,0,0.2); display:flex; align-items:center; justify-content:center; }
 .fret.active { background:orange; }
 .fret.chord-active { background:#ffcc66; }
+.fret.temp-active { background:orange; } /* для подсветки в мелодии */
 
 /* === STRUM === */
 .strum { flex:1; background:rgba(0,0,0,0.05); }
@@ -126,7 +127,6 @@ function unlockAudio(){
 
 function playSound(key){
   if(!audioCtx) return;
-
   if(!audioBuffers[key]){
     fetch(`sounds/${key}.mp3`)
       .then(r=>r.arrayBuffer())
@@ -134,25 +134,22 @@ function playSound(key){
       .then(decoded=>{ audioBuffers[key]=decoded; playSound(key); });
     return;
   }
-
   const src=audioCtx.createBufferSource();
   src.buffer=audioBuffers[key];
   src.connect(audioCtx.destination);
   src.start(0);
 }
 
-/* WELCOME SCREEN */
+/* WELCOME */
 document.getElementById("startBtn").onclick=()=>{
   unlockAudio();
   audioCtx.resume();
-
   const osc=audioCtx.createOscillator();
   const gain=audioCtx.createGain();
   gain.gain.value=0;
   osc.connect(gain).connect(audioCtx.destination);
   osc.start();
   osc.stop(audioCtx.currentTime+0.01);
-
   document.getElementById("welcome").style.display="none";
 };
 
@@ -168,22 +165,15 @@ const chords={
   "D":{1:2,2:3,3:2}
 };
 const buttons=document.querySelectorAll(".chords button");
-
 buttons.forEach(btn=>{
   btn.addEventListener("pointerdown",e=>{
     e.preventDefault();
     unlockAudio();
     buttons.forEach(b=>b.classList.remove("active"));
     document.querySelectorAll(".fret").forEach(f=>f.classList.remove("chord-active","active"));
-
     const name=btn.dataset.chord;
-    if(currentChord===name){
-      currentChord=null;
-      return;
-    }
-    currentChord=name;
-    btn.classList.add("active");
-
+    if(currentChord===name){ currentChord=null; return; }
+    currentChord=name; btn.classList.add("active");
     for(let s in chords[name]){
       const f=chords[name][s];
       heldFrets[s]=f;
@@ -193,9 +183,8 @@ buttons.forEach(btn=>{
   });
 });
 
-/* BUILD STRINGS AND FRETS */
+/* BUILD STRINGS & FRETS */
 const box=document.getElementById("box");
-
 for(let s=6;s>=1;s--){
   const stringEl=document.createElement("div");
   stringEl.className="string";
@@ -209,22 +198,16 @@ for(let s=6;s>=1;s--){
     fret.dataset.fret=f;
 
     fret.addEventListener("pointerdown",e=>{
-      e.stopPropagation();
-      unlockAudio();
-      heldFrets[s]=f;
-      clearFrets(s);
-      fret.classList.add("active");
+      e.stopPropagation(); unlockAudio(); heldFrets[s]=f; clearFrets(s); fret.classList.add("active");
     });
     fret.addEventListener("pointermove",e=>{
       if(e.pressure===0) return;
       const el=document.elementFromPoint(e.clientX,e.clientY);
-      if(!el || !el.classList.contains("fret")) return;
+      if(!el||!el.classList.contains("fret")) return;
       if(el.dataset.string!==String(s)) return;
       const newF=+el.dataset.fret;
       if(heldFrets[s]===newF) return;
-      heldFrets[s]=newF;
-      clearFrets(s);
-      el.classList.add("active");
+      heldFrets[s]=newF; clearFrets(s); el.classList.add("active");
     });
     fret.addEventListener("pointerup",()=>releaseFret(s));
     fret.addEventListener("pointerleave",()=>releaseFret(s));
@@ -236,76 +219,59 @@ for(let s=6;s>=1;s--){
   const strum=document.createElement("div");
   strum.className="strum";
   strum.dataset.string=s;
-  strum.addEventListener("pointerdown",e=>{
-    unlockAudio();
-    pointerDown=true;
-    touchedStrings.clear();
-    handleStrum(e);
-  });
+  strum.addEventListener("pointerdown",e=>{ unlockAudio(); pointerDown=true; touchedStrings.clear(); handleStrum(e); });
 
   stringEl.appendChild(strum);
   box.appendChild(stringEl);
 }
 
-function clearFrets(s){
-  document.querySelectorAll(`.fret[data-string="${s}"]`).forEach(el=>el.classList.remove("active"));
-}
-function releaseFret(s){
-  delete heldFrets[s];
-  clearFrets(s);
-}
+function clearFrets(s){ document.querySelectorAll(`.fret[data-string="${s}"]`).forEach(el=>el.classList.remove("active")); }
+function releaseFret(s){ delete heldFrets[s]; clearFrets(s); }
 
 /* PLAY NOTES */
-function playNote(s,f){
+function playNote(s,f,temp=false){
   const key=f?`${s}-${f}`:String(s);
   playSound(key);
-
   const stringEl=document.querySelector(`.string[data-string="${s}"]`);
   stringEl.classList.add("vibrate");
   setTimeout(()=>stringEl.classList.remove("vibrate"),150);
-
   const strumEl=stringEl.querySelector(".strum");
   strumEl.classList.add("active");
   setTimeout(()=>strumEl.classList.remove("active"),150);
-
   if(f){
     const fretEl=document.querySelector(`.fret[data-string="${s}"][data-fret="${f}"]`);
-    fretEl.classList.add("active");
-    setTimeout(()=>fretEl.classList.remove("active"),150);
+    if(temp) fretEl.classList.add("temp-active");
+    else fretEl.classList.add("active");
+    setTimeout(()=>fretEl.classList.remove(temp?"temp-active":"active"),150);
   }
 }
-function playString(s){
-  let f=null;
+function playString(s){ 
+  let f=null; 
   if(heldFrets[s]!=null) f=heldFrets[s];
   else if(currentChord && chords[currentChord]?.[s]) f=chords[currentChord][s];
-  playNote(s,f);
+  playNote(s,f); 
 }
 
 /* STRUM */
 function handleStrum(e){
   const el=document.elementFromPoint(e.clientX,e.clientY);
-  if(!el || !el.classList.contains("strum")) return;
+  if(!el||!el.classList.contains("strum")) return;
   const s=el.dataset.string;
   if(touchedStrings.has(s)) return;
   touchedStrings.add(s);
   playString(s);
 }
-document.addEventListener("pointermove",e=>{
-  if(pointerDown){ e.preventDefault(); handleStrum(e); }
-},{passive:false});
+document.addEventListener("pointermove",e=>{ if(pointerDown){ e.preventDefault(); handleStrum(e); }},{passive:false});
 document.addEventListener("pointerup",()=>{ pointerDown=false; touchedStrings.clear(); });
 
-/* SWIPE OUTSIDE BOX */
+/* SWIPE OUTSIDE */
 document.addEventListener("pointerdown",e=>{
   if(e.target.closest("input, button")) return;
   const rect=box.getBoundingClientRect();
   const margin=80;
   if(e.clientX>=rect.left-margin && e.clientX<=rect.right+margin &&
      e.clientY>=rect.top-margin && e.clientY<=rect.bottom+margin){
-    unlockAudio();
-    pointerDown=true;
-    touchedStrings.clear();
-    handleStrum(e);
+    unlockAudio(); pointerDown=true; touchedStrings.clear(); handleStrum(e);
   }
 });
 
@@ -319,20 +285,6 @@ document.getElementById("playBtn").onclick=()=>{
   for(let k in heldFrets) delete heldFrets[k];
   playMelody(text);
 };
-
-function highlightChord(name){
-  document.querySelectorAll(".fret").forEach(f=>f.classList.remove("chord-active"));
-  buttons.forEach(b=>b.classList.remove("active"));
-  currentChord=name;
-  const btn=document.querySelector(`.chords button[data-chord="${name}"]`);
-  if(btn) btn.classList.add("active");
-  for(let s in chords[name]){
-    const f=chords[name][s];
-    heldFrets[s]=f;
-    const el=document.querySelector(`.fret[data-string="${s}"][data-fret="${f}"]`);
-    if(el) el.classList.add("chord-active");
-  }
-}
 
 function playMelody(text){
   const tokens=text.split(/\s+/);
@@ -349,7 +301,14 @@ function playMelody(text){
       let s1=range?+range[1]:(dir==="d"?6:1);
       let s2=range?+range[2]:(dir==="d"?1:6);
       let sp=speed?+speed[1]:80;
-      if(chordMatch) highlightChord(chordMatch[1]);
+      if(chordMatch){
+        // подсветка ладов без активации кнопки
+        const name=chordMatch[1];
+        for(let s in chords[name]){
+          const f=chords[name][s];
+          playNote(+s,f,true);
+        }
+      }
       strum(s1,s2,sp);
       i++;
       setTimeout(step, sp*Math.abs(s2-s1)+sp);
@@ -357,8 +316,13 @@ function playMelody(text){
     }
 
     const chordToken = t.match(/\$(\w+)/);
-    if(chordToken) highlightChord(chordToken[1]);
-    else if(t.includes("/")){
+    if(chordToken){
+      const name=chordToken[1];
+      for(let s in chords[name]){
+        const f=chords[name][s];
+        playNote(+s,f,true);
+      }
+    } else if(t.includes("/")){
       const [s,f]=t.split("/");
       playNote(+s,+f);
     } else if(/^[1-6]$/.test(t)){
@@ -382,5 +346,6 @@ function strum(s1,s2,sp){
 
 document.addEventListener("contextmenu",e=>e.preventDefault());
 </script>
+
 </body>
 </html>
