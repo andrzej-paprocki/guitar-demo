@@ -77,8 +77,8 @@ h1 { margin:10px; }
   align-items:center;
   justify-content:center;
 }
-.fret.active { background:orange; }          /* для свайпа и мелодии */
-.fret.chord-active { background:#ffcc66; }   /* для кнопок аккордов */
+.fret.active { background:orange; }          /* свайп или мелодия */
+.fret.chord-active { background:#ffcc66; }   /* кнопка аккорда */
 
 /* === STRUM === */
 .strum {
@@ -111,7 +111,7 @@ h1 { margin:10px; }
   <button id="startBtn">OK</button>
 </div>
 
-<h1>Guitar 10.26</h1>
+<h1>Guitar 10.27</h1>
 
 <div class="melody">
   <input id="melodyInput" placeholder="6/3 5/2 d:6-1@200$Am">
@@ -136,7 +136,7 @@ let audioCtx = null;
 const audioBuffers = {};
 let pointerDown = false;
 const touchedStrings = new Set();
-let swipeFrets = {}; // для свайпа по ладам до удара
+let swipeFrets = {}; // свайп по ладам
 const heldFrets = {}; // для кнопок аккордов
 let currentChord = null;
 
@@ -196,7 +196,6 @@ function initGuitar(){
     stringEl.className="string";
     stringEl.dataset.string=s;
 
-    // Лады
     for(let f=1;f<=6;f++){
       const fret=document.createElement("div");
       fret.className="fret";
@@ -207,7 +206,7 @@ function initGuitar(){
       fret.addEventListener("pointerdown", e=>{
         unlockAudio();
         swipeFrets[s] = f;
-        highlightFrets();
+        fret.classList.add("active");
       });
 
       fret.addEventListener("pointermove", e=>{
@@ -219,13 +218,22 @@ function initGuitar(){
         if(str===s){
           swipeFrets[s]=fr;
           highlightFrets();
+          el.classList.add("active");
         }
       });
+
+      const releaseFret=()=>{ 
+        if(swipeFrets[s]===f) delete swipeFrets[s];
+        fret.classList.remove("active");
+        highlightFrets();
+      };
+      fret.addEventListener("pointerup", releaseFret);
+      fret.addEventListener("pointerleave", releaseFret);
+      fret.addEventListener("pointercancel", releaseFret);
 
       stringEl.appendChild(fret);
     }
 
-    // Струна
     const strum=document.createElement("div");
     strum.className="strum";
     strum.dataset.string=s;
@@ -244,9 +252,9 @@ function initGuitar(){
     document.querySelectorAll(".fret").forEach(f=>{
       const s=+f.dataset.string;
       const fr=+f.dataset.fret;
+      f.classList.remove("active");
       if(swipeFrets[s]===fr) f.classList.add("active");
       else if(heldFrets[s]===fr) f.classList.add("chord-active");
-      else f.classList.remove("active","chord-active");
     });
   }
 
@@ -261,18 +269,12 @@ function initGuitar(){
     const strumEl=stringEl.querySelector(".strum");
     strumEl.classList.add("active");
     setTimeout(()=>strumEl.classList.remove("active"),150);
-
-    if(f){
-      const fretEl=document.querySelector(`.fret[data-string="${s}"][data-fret="${f}"]`);
-      fretEl.classList.add("active");
-      setTimeout(()=>{ if(swipeFrets[s]!==f && heldFrets[s]!==f) fretEl.classList.remove("active"); },150);
-    }
   }
 
   function playStringWithSwipe(s){
     const f=swipeFrets[s] ?? heldFrets[s] ?? null;
     playNote(s,f);
-    delete swipeFrets[s]; // после удара свайп по струне блокируется
+    delete swipeFrets[s]; // после удара свайп блокируется
     highlightFrets();
   }
 
