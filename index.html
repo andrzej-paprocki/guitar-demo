@@ -182,22 +182,23 @@ function initGuitar(){
     }
   });
 
-  // Swipe по ладам
-  document.querySelectorAll(".fret").forEach(fret=>{
-    const s=fret.dataset.string;
-    fret.addEventListener("pointermove", e=>{
-      if(!pointerDown) return;
-      const el=document.elementFromPoint(e.clientX,e.clientY);
-      if(!el || !el.classList.contains("fret")) return;
-      if(el.dataset.string!==s) return;
-      const f=+el.dataset.fret;
-      if(heldFrets[s]===f) return;
-      heldFrets[s]=f;
-      document.querySelectorAll(`.fret[data-string="${s}"]`).forEach(f2=>f2.classList.remove("active"));
-      el.classList.add("active");
-      playNote(s,f);
-    });
+// Swipe по ладам
+document.querySelectorAll(".fret").forEach(fret=>{
+  const s=fret.dataset.string;
+  fret.addEventListener("pointermove", e=>{
+    if(!pointerDown) return;
+    const el=document.elementFromPoint(e.clientX,e.clientY);
+    if(!el || !el.classList.contains("fret")) return;
+    if(el.dataset.string!==s) return;
+    const f=+el.dataset.fret;
+    if(heldFrets[s]===f) return;
+
+    // только подсветка лада, без звука
+    heldFrets[s]=f;
+    document.querySelectorAll(`.fret[data-string="${s}"]`).forEach(f2=>f2.classList.remove("active"));
+    el.classList.add("active");
   });
+});
 
   const buttons=document.querySelectorAll(".chords button");
   buttons.forEach(btn=>{
