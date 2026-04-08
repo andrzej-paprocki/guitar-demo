@@ -27,12 +27,13 @@ h1 { margin:10px; }
   height:60vh;
   border:2px solid black;
   background:lightgrey;
+  transition: transform 0.1s;
 }
 
 .fret { flex:0 0 8%; border-bottom:1px solid rgba(0,0,0,0.2); display:flex; align-items:center; justify-content:center; }
 .fret.active, .fret.chord-active { background:orange; }
 
-.strum { flex:1; background:rgba(0,0,0,0.05); transition: transform 0.15s; }
+.strum { flex:1; background:rgba(0,0,0,0.05); }
 .strum.active { background:orange; }
 
 .chords {
@@ -69,7 +70,7 @@ button { padding:6px 12px; font-size:14px; cursor:pointer; }
   <button id="okBtn">OK</button>
 </div>
 
-<h1>Guitar 10.17</h1>
+<h1>Guitar 10.18</h1>
 
 <div class="melody">
   <input id="melodyInput" placeholder="6/3 5/2 d:6-1@200$Am">
@@ -154,8 +155,11 @@ for(let s=6;s>=1;s--){
     fret.addEventListener("pointerdown",e=>{
       e.stopPropagation();
       unlockAudio();
+      pointerDown=true;
+      touchedStrings.clear();
       heldFrets[s]=f;
       fret.classList.add("active");
+      handleStrum(e); // свайп по ладам
     });
 
     const release=()=>{ 
@@ -197,14 +201,16 @@ function playNote(s,f,chordName){
 
   playSound(key);
 
+  // вибрация струны
+  const stringEl = document.querySelector(`.string[data-string="${s}"]`);
+  stringEl.style.transform="translateY(-5px)";
+  setTimeout(()=>{ stringEl.style.transform="translateY(0)"; }, 80);
+
+  // подсветка струны и ладов
   const strumEl=document.querySelector(`.string[data-string="${s}"] .strum`);
   if(strumEl){
     strumEl.classList.add("active");
-    strumEl.style.transform = "scaleY(1.2)";
-    setTimeout(()=>{
-      strumEl.classList.remove("active");
-      strumEl.style.transform = "";
-    },150);
+    setTimeout(()=>strumEl.classList.remove("active"),150);
   }
 
   if(f != null){
@@ -227,13 +233,13 @@ function playString(s){
 
 function handleStrum(e){
   const el=document.elementFromPoint(e.clientX,e.clientY);
-  if(!el || !el.classList.contains("strum")) return;
-
-  const s=el.dataset.string;
-  if(!s || touchedStrings.has(s)) return;
-
-  touchedStrings.add(s);
-  playString(s);
+  if(!el) return;
+  if(el.classList.contains("strum") || el.classList.contains("fret")){
+    const s = el.dataset.string;
+    if(!s || touchedStrings.has(s)) return;
+    touchedStrings.add(s);
+    playString(s);
+  }
 }
 
 document.addEventListener("pointermove",e=>{
@@ -253,8 +259,8 @@ document.addEventListener("pointerdown", e => {
   if (
     e.clientX >= rect.left - margin &&
     e.clientX <= rect.right + margin &&
-    e.clientY >= rect.top &&
-    e.clientY <= rect.bottom
+    e.clientY >= rect.top - margin &&
+    e.clientY <= rect.bottom + margin
   ){
     unlockAudio();
     pointerDown = true;
@@ -358,7 +364,7 @@ function strum(s1,s2,sp,ch){
 
 document.addEventListener("contextmenu",e=>e.preventDefault());
 
-// welcome screen button
+// welcome screen
 document.getElementById("okBtn").addEventListener("click",()=>{
   unlockAudio();
   document.getElementById("welcome").style.display="none";
