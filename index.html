@@ -5,103 +5,36 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Guitar Universal Audio</title>
 <style>
-html, body {
-  margin:0; padding:0;
-  touch-action:none;
-  background:pink;
-  font-family:sans-serif;
-  display:flex;
-  flex-direction:column;
-  align-items:center;
-}
+html, body { margin:0; padding:0; touch-action:none; background:pink; font-family:sans-serif; display:flex; flex-direction:column; align-items:center; }
 * { user-select:none; -webkit-user-select:none; -webkit-touch-callout:none; -webkit-tap-highlight-color:transparent; }
 
 h1 { margin:10px; }
 
-/* === WELCOME === */
-#welcome {
-  position:fixed;
-  inset:0;
-  background:black;
-  color:white;
-  display:flex;
-  flex-direction:column;
-  align-items:center;
-  justify-content:center;
-  z-index:999;
-}
+/* WELCOME */
+#welcome { position:fixed; inset:0; background:black; color:white; display:flex; flex-direction:column; align-items:center; justify-content:center; z-index:999; }
 
-/* === STRINGS === */
+/* STRINGS */
 .box { display:flex; gap:15px; }
+.string { display:flex; flex-direction:column; width:50px; height:60vh; border:2px solid black; background:lightgrey; position:relative; }
+.string::after { content:""; position:absolute; left:50%; top:0; bottom:0; width:2px; background:black; transform:translateX(-50%); opacity:0.6; }
+.string.vibrate::after { animation:vibe 0.15s linear; }
+@keyframes vibe { 0%{transform:translateX(-50%) translateX(0);} 25%{transform:translateX(-50%) translateX(2px);} 50%{transform:translateX(-50%) translateX(-2px);} 75%{transform:translateX(-50%) translateX(1px);} 100%{transform:translateX(-50%) translateX(0);} }
 
-.string {
-  display:flex;
-  flex-direction:column;
-  width:50px;
-  height:60vh;
-  border:2px solid black;
-  background:lightgrey;
-  position:relative;
-}
-
-/* струна */
-.string::after {
-  content:"";
-  position:absolute;
-  left:50%;
-  top:0;
-  bottom:0;
-  width:2px;
-  background:black;
-  transform:translateX(-50%);
-  opacity:0.6;
-}
-
-/* вибрация */
-.string.vibrate::after {
-  animation:vibe 0.15s linear;
-}
-@keyframes vibe {
-  0% { transform:translateX(-50%) translateX(0); }
-  25% { transform:translateX(-50%) translateX(2px); }
-  50% { transform:translateX(-50%) translateX(-2px); }
-  75% { transform:translateX(-50%) translateX(1px); }
-  100% { transform:translateX(-50%) translateX(0); }
-}
-
-/* === FRETS === */
-.fret {
-  flex:0 0 8%;
-  border-bottom:1px solid rgba(0,0,0,0.2);
-  display:flex;
-  align-items:center;
-  justify-content:center;
-}
+/* FRETS */
+.fret { flex:0 0 8%; border-bottom:1px solid rgba(0,0,0,0.2); display:flex; align-items:center; justify-content:center; }
 .fret.active { background:orange; }          /* свайп или мелодия */
 .fret.chord-active { background:#ffcc66; }   /* кнопка аккорда */
 
-/* === STRUM === */
-.strum {
-  flex:1;
-  background:rgba(0,0,0,0.05);
-}
+/* STRUM */
+.strum { flex:1; background:rgba(0,0,0,0.05); }
 .strum.active { background:orange; }
 
-/* === CHORDS === */
-.chords {
-  display:grid;
-  grid-template-columns:repeat(4,90px);
-  gap:10px;
-  margin:15px;
-}
+/* CHORDS */
+.chords { display:grid; grid-template-columns:repeat(4,90px); gap:10px; margin:15px; }
 .chords button.active { background:orange; }
 
-/* === MELODY === */
-.melody {
-  margin:10px;
-  display:flex;
-  gap:5px;
-}
+/* MELODY */
+.melody { margin:10px; display:flex; gap:5px; }
 </style>
 </head>
 <body>
@@ -111,7 +44,7 @@ h1 { margin:10px; }
   <button id="startBtn">OK</button>
 </div>
 
-<h1>Guitar 10.27</h1>
+<h1>Guitar 10.28</h1>
 
 <div class="melody">
   <input id="melodyInput" placeholder="6/3 5/2 d:6-1@200$Am">
@@ -132,13 +65,13 @@ h1 { margin:10px; }
 </div>
 
 <script>
-let audioCtx = null;
-const audioBuffers = {};
-let pointerDown = false;
-const touchedStrings = new Set();
-let swipeFrets = {}; // свайп по ладам
-const heldFrets = {}; // для кнопок аккордов
-let currentChord = null;
+let audioCtx=null;
+const audioBuffers={};
+let pointerDown=false;
+const touchedStrings=new Set();
+let swipeFrets={};  // текущие свайповые позиции пальцев
+const heldFrets={};  // аккордные лады
+let currentChord=null;
 
 const chords = {
   "Am": {2:1,3:2,4:2},
@@ -151,42 +84,21 @@ const chords = {
   "D": {1:2,2:3,3:2}
 };
 
-const SOUND_FILES = {};
-for(let s=1;s<=6;s++){
-  SOUND_FILES[s] = `sounds/${s}.mp3`;
-  for(let f=1;f<=6;f++) SOUND_FILES[`${s}-${f}`]=`sounds/${s}-${f}.mp3`;
-}
+// Аудио
+const SOUND_FILES={};
+for(let s=1;s<=6;s++){ SOUND_FILES[s]=`sounds/${s}.mp3`; for(let f=1;f<=6;f++) SOUND_FILES[`${s}-${f}`]=`sounds/${s}-${f}.mp3`; }
 
-function unlockAudio(){
-  if(audioCtx) return;
-  audioCtx = new (window.AudioContext||window.webkitAudioContext)();
-  audioCtx.resume();
-}
+function unlockAudio(){ if(audioCtx) return; audioCtx=new (window.AudioContext||window.webkitAudioContext)(); audioCtx.resume(); }
+function playSound(key){ if(!audioCtx) unlockAudio(); if(!audioBuffers[key]){ fetch(SOUND_FILES[key]).then(r=>r.arrayBuffer()).then(buf=>audioCtx.decodeAudioData(buf)).then(d=>{ audioBuffers[key]=d; playSound(key); }).catch(err=>console.error(err)); return; } const src=audioCtx.createBufferSource(); src.buffer=audioBuffers[key]; src.connect(audioCtx.destination); src.start(0); }
 
-function playSound(key){
-  if(!audioCtx) unlockAudio();
-  if(!audioBuffers[key]){
-    fetch(SOUND_FILES[key])
-      .then(r=>r.arrayBuffer())
-      .then(buf=>audioCtx.decodeAudioData(buf))
-      .then(decoded=>{ audioBuffers[key]=decoded; playSound(key); })
-      .catch(err=>console.error("Audio error:", key, err));
-    return;
-  }
-  const src = audioCtx.createBufferSource();
-  src.buffer = audioBuffers[key];
-  src.connect(audioCtx.destination);
-  src.start(0);
-}
-
-/* === WELCOME === */
-document.getElementById("startBtn").onclick = () => {
+/* WELCOME */
+document.getElementById("startBtn").onclick=()=>{
   unlockAudio();
-  document.getElementById("welcome").style.display = "none";
+  document.getElementById("welcome").style.display="none";
   initGuitar();
 };
 
-/* === GUITAR BUILD === */
+/* GUITAR BUILD */
 function initGuitar(){
   const box=document.getElementById("box");
   const buttons=document.querySelectorAll(".chords button");
@@ -205,7 +117,7 @@ function initGuitar(){
 
       fret.addEventListener("pointerdown", e=>{
         unlockAudio();
-        swipeFrets[s] = f;
+        swipeFrets[s]=f;
         fret.classList.add("active");
       });
 
@@ -215,16 +127,11 @@ function initGuitar(){
         if(!el || !el.classList.contains("fret")) return;
         const str=+el.dataset.string;
         const fr=+el.dataset.fret;
-        if(str===s){
-          swipeFrets[s]=fr;
-          highlightFrets();
-          el.classList.add("active");
-        }
+        if(str===s){ swipeFrets[s]=fr; highlightFrets(); }
       });
 
-      const releaseFret=()=>{ 
+      const releaseFret=()=>{
         if(swipeFrets[s]===f) delete swipeFrets[s];
-        fret.classList.remove("active");
         highlightFrets();
       };
       fret.addEventListener("pointerup", releaseFret);
@@ -261,11 +168,9 @@ function initGuitar(){
   function playNote(s,f){
     const key=f?`${s}-${f}`:String(s);
     playSound(key);
-
     const stringEl=document.querySelector(`.string[data-string="${s}"]`);
     stringEl.classList.add("vibrate");
     setTimeout(()=>stringEl.classList.remove("vibrate"),150);
-
     const strumEl=stringEl.querySelector(".strum");
     strumEl.classList.add("active");
     setTimeout(()=>strumEl.classList.remove("active"),150);
@@ -274,7 +179,7 @@ function initGuitar(){
   function playStringWithSwipe(s){
     const f=swipeFrets[s] ?? heldFrets[s] ?? null;
     playNote(s,f);
-    delete swipeFrets[s]; // после удара свайп блокируется
+    delete swipeFrets[s]; // после удара свайп сбрасывается
     highlightFrets();
   }
 
@@ -289,7 +194,7 @@ function initGuitar(){
         playStringWithSwipe(s);
       }
     }
-  }, {passive:false});
+  },{passive:false});
 
   document.addEventListener("pointerup", ()=>{
     pointerDown=false;
@@ -318,24 +223,17 @@ function initGuitar(){
       e.preventDefault();
       unlockAudio();
       pointerDown=false; touchedStrings.clear();
-
       const name=btn.dataset.chord;
       if(currentChord===name){
-        currentChord=null;
-        btn.classList.remove("active");
+        currentChord=null; btn.classList.remove("active");
         for(let s in heldFrets) delete heldFrets[s];
-        highlightFrets();
-        return;
+        highlightFrets(); return;
       }
-
       currentChord=name;
       buttons.forEach(b=>b.classList.remove("active"));
       btn.classList.add("active");
-
       for(let s in heldFrets) delete heldFrets[s];
-      for(let s in chords[name]){
-        heldFrets[s]=chords[name][s];
-      }
+      for(let s in chords[name]) heldFrets[s]=chords[name][s];
       highlightFrets();
     });
   });
@@ -356,29 +254,21 @@ function initGuitar(){
     function step(){
       if(i>=tokens.length) return;
       const t=tokens[i];
-
       if(t.startsWith("d")||t.startsWith("u")){
-        const dir=t[0];
-        const range=t.match(/:(\d+)-(\d+)/);
-        const speed=t.match(/@(\d+)/);
-        const chord=t.match(/\$(\w+)/);
+        const dir=t[0], range=t.match(/:(\d+)-(\d+)/), speed=t.match(/@(\d+)/), chord=t.match(/\$(\w+)/);
         let s1=null,s2=null,sp=80,ch=null;
         if(range){ s1=+range[1]; s2=+range[2]; }
         if(speed) sp=+speed[1];
         if(chord) ch=chord[1];
-        if(s1===null||s2===null){ if(dir==='d'){s1=6;s2=1;} else {s1=1;s2=6;} }
+        if(s1===null||s2===null){ if(dir==='d'){s1=6;s2=1;} else{s1=1;s2=6;} }
         strum(s1,s2,sp,ch);
         i++;
         setTimeout(step, sp*Math.abs(s2-s1)+sp);
         return;
       }
-
       if(t.includes("/")){
-        const [s,f]=t.split("/");
-        playNote(+s,+f);
-      } else if(/^[1-6]$/.test(t)){
-        playStringWithSwipe(+t);
-      }
+        const [s,f]=t.split("/"); playNote(+s,+f);
+      } else if(/^[1-6]$/.test(t)) playStringWithSwipe(+t);
       i++;
       setTimeout(step,250);
     }
@@ -386,7 +276,7 @@ function initGuitar(){
   }
 
   function strum(s1,s2,sp,ch){
-    let step = s1<=s2?1:-1;
+    let step=s1<=s2?1:-1;
     for(let s=s1,i=0; step>0?s<=s2:s>=s2; s+=step,i++){
       setTimeout(()=>{
         let f=null;
