@@ -7,7 +7,8 @@
 
 <style>
 html, body {
-  margin:0; padding:0;
+  margin:0;
+  padding:0;
   touch-action:none;
   background:pink;
   font-family:sans-serif;
@@ -37,12 +38,6 @@ h1 { margin:10px; }
   z-index:999;
 }
 
-#welcome button {
-  margin-top:20px;
-  font-size:20px;
-  padding:10px 20px;
-}
-
 /* === STRINGS === */
 .box { display:flex; gap:15px; }
 
@@ -56,6 +51,7 @@ h1 { margin:10px; }
   position:relative;
 }
 
+/* струна */
 .string::after {
   content:"";
   position:absolute;
@@ -68,6 +64,20 @@ h1 { margin:10px; }
   opacity:0.6;
 }
 
+/* 🎸 вибрация */
+.string.vibrate::after {
+  animation:vibe 0.15s linear;
+}
+
+@keyframes vibe {
+  0% { transform:translateX(-50%) translateX(0); }
+  25% { transform:translateX(-50%) translateX(2px); }
+  50% { transform:translateX(-50%) translateX(-2px); }
+  75% { transform:translateX(-50%) translateX(1px); }
+  100% { transform:translateX(-50%) translateX(0); }
+}
+
+/* === FRETS === */
 .fret {
   flex:0 0 8%;
   border-bottom:1px solid rgba(0,0,0,0.2);
@@ -75,10 +85,10 @@ h1 { margin:10px; }
   align-items:center;
   justify-content:center;
 }
-
 .fret.active { background:orange; }
 .fret.chord-active { background:#ffcc66; }
 
+/* === STRUM === */
 .strum {
   flex:1;
   background:rgba(0,0,0,0.05);
@@ -90,9 +100,8 @@ h1 { margin:10px; }
   display:grid;
   grid-template-columns:repeat(4,90px);
   gap:10px;
-  margin:15px 10px;
+  margin:15px;
 }
-
 .chords button.active { background:orange; }
 
 /* === MELODY === */
@@ -111,7 +120,7 @@ h1 { margin:10px; }
   <button id="startBtn">OK</button>
 </div>
 
-<h1>Guitar 10.19</h1>
+<h1>Guitar 10.20</h1>
 
 <div class="melody">
   <input id="melodyInput" placeholder="6/3 5/2 d:6-1@200$Am">
@@ -165,7 +174,7 @@ function playSound(key){
   src.start(0);
 }
 
-/* WELCOME */
+/* WELCOME FIX */
 document.getElementById("startBtn").onclick=()=>{
   unlockAudio();
   audioCtx.resume();
@@ -198,16 +207,13 @@ for(let s=6;s>=1;s--){
     fret.addEventListener("pointerdown",e=>{
       e.stopPropagation();
       unlockAudio();
-
       heldFrets[s]=f;
-
       clearFrets(s);
       fret.classList.add("active");
     });
 
     fret.addEventListener("pointermove",e=>{
       if(e.pressure===0) return;
-
       const el=document.elementFromPoint(e.clientX,e.clientY);
       if(!el || !el.classList.contains("fret")) return;
       if(el.dataset.string!==String(s)) return;
@@ -221,8 +227,8 @@ for(let s=6;s>=1;s--){
     });
 
     fret.addEventListener("pointerup",()=>releaseFret(s));
-    fret.addEventListener("pointercancel",()=>releaseFret(s));
     fret.addEventListener("pointerleave",()=>releaseFret(s));
+    fret.addEventListener("pointercancel",()=>releaseFret(s));
 
     stringEl.appendChild(fret);
   }
@@ -242,7 +248,6 @@ for(let s=6;s>=1;s--){
   box.appendChild(stringEl);
 }
 
-/* HELPERS */
 function clearFrets(s){
   document.querySelectorAll(`.fret[data-string="${s}"]`)
     .forEach(el=>el.classList.remove("active"));
@@ -258,9 +263,19 @@ function playNote(s,f){
   const key=f?`${s}-${f}`:String(s);
   playSound(key);
 
-  const strumEl=document.querySelector(`.string[data-string="${s}"] .strum`);
+  const stringEl=document.querySelector(`.string[data-string="${s}"]`);
+  stringEl.classList.add("vibrate");
+  setTimeout(()=>stringEl.classList.remove("vibrate"),150);
+
+  const strumEl=stringEl.querySelector(".strum");
   strumEl.classList.add("active");
   setTimeout(()=>strumEl.classList.remove("active"),150);
+
+  if(f){
+    const fretEl=document.querySelector(`.fret[data-string="${s}"][data-fret="${f}"]`);
+    fretEl.classList.add("active");
+    setTimeout(()=>fretEl.classList.remove("active"),150);
+  }
 }
 
 function playString(s){
@@ -357,7 +372,7 @@ buttons.forEach(btn=>{
   });
 });
 
-/* === MELODY BACK === */
+/* 🎼 FULL MELODY */
 document.getElementById("playBtn").onclick=()=>{
   const text=document.getElementById("melodyInput").value.trim();
   if(!text) return;
@@ -379,26 +394,44 @@ function playMelody(text){
     if(i>=tokens.length) return;
     const t=tokens[i];
 
+    if(t.startsWith("d")||t.startsWith("u")){
+      const dir=t[0];
+      const range=t.match(/:(\d+)-(\d+)/);
+      const speed=t.match(/@(\d+)/);
+      let s1=range?+range[1]:6;
+      let s2=range?+range[2]:1;
+      let sp=speed?+speed[1]:80;
+
+      strum(s1,s2,sp);
+      i++;
+      setTimeout(step, sp*Math.abs(s2-s1)+sp);
+      return;
+    }
+
     if(t.includes("/")){
       const [s,f]=t.split("/");
       playNote(+s,+f);
-      i++;
-      setTimeout(step,250);
-      return;
-    }
-
-    if(/^[1-6]$/.test(t)){
+    } else if(/^[1-6]$/.test(t)){
       playString(+t);
-      i++;
-      setTimeout(step,250);
-      return;
     }
 
     i++;
-    step();
+    setTimeout(step,250);
   }
 
   step();
+}
+
+function strum(s1,s2,sp){
+  let step = s1<=s2?1:-1;
+  let i=0;
+
+  for(let s=s1; step>0?s<=s2:s>=s2; s+=step){
+    setTimeout(()=>{
+      playString(s);
+    }, i*sp);
+    i++;
+  }
 }
 </script>
 
