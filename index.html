@@ -16,6 +16,7 @@ html, body {
   flex-direction:column;
   align-items:center;
 }
+
 * {
   user-select:none;
   -webkit-user-select:none;
@@ -25,49 +26,35 @@ html, body {
 
 h1 { margin:10px; }
 
-/* welcome */
-#welcome {
-  position:fixed;
-  inset:0;
-  background:black;
-  color:white;
-  display:flex;
-  flex-direction:column;
-  align-items:center;
-  justify-content:center;
-  z-index:999;
-}
-
-/* layout */
-.box {
+/* === LAYOUT === */
+.wrapper {
   display:flex;
   gap:10px;
-  align-items:flex-start;
 }
 
-/* barre */
-.barre-panel {
+/* === BARRE === */
+.barreColumn {
   display:flex;
   flex-direction:column;
-  justify-content:space-between;
   height:60vh;
+  width:40px;
 }
 
 .barre {
-  height:8%;
-  width:60px;
-  background:#ddd;
+  flex:0 0 8%;
   border:1px solid black;
+  background:#ddd;
   display:flex;
   align-items:center;
   justify-content:center;
 }
+
 .barre.active {
-  background:orange;
+  background:red;
 }
 
-/* strings */
-#box {
+/* === STRINGS === */
+.box {
   display:flex;
   gap:10px;
 }
@@ -75,7 +62,7 @@ h1 { margin:10px; }
 .string {
   display:flex;
   flex-direction:column;
-  width:35px;
+  width:40px;
   height:60vh;
   border:2px solid black;
   background:lightgrey;
@@ -94,16 +81,17 @@ h1 { margin:10px; }
   opacity:0.6;
 }
 
+/* vibration */
 .string.vibrate::after {
   animation:vibe 0.15s linear;
 }
 
 @keyframes vibe {
-  0% { transform:translateX(-50%) translateX(0); }
-  25% { transform:translateX(-50%) translateX(2px); }
-  50% { transform:translateX(-50%) translateX(-2px); }
-  75% { transform:translateX(-50%) translateX(1px); }
-  100% { transform:translateX(-50%) translateX(0); }
+  0% { transform:translateX(-50%) }
+  25% { transform:translateX(-48%) }
+  50% { transform:translateX(-52%) }
+  75% { transform:translateX(-49%) }
+  100% { transform:translateX(-50%) }
 }
 
 /* frets */
@@ -114,6 +102,7 @@ h1 { margin:10px; }
   align-items:center;
   justify-content:center;
 }
+
 .fret.active { background:orange; }
 .fret.chord-active { background:#ffcc66; }
 
@@ -131,34 +120,23 @@ h1 { margin:10px; }
   gap:10px;
   margin:15px;
 }
-.chords button.active { background:orange; }
 
-/* melody */
-.melody {
-  margin:10px;
-  display:flex;
-  gap:5px;
+.chords button.active {
+  background:orange;
 }
 </style>
 </head>
 
 <body>
 
-<div id="welcome">
-  <h1>🎸 Guitar Barre 1</h1>
-  <button id="startBtn">OK</button>
-</div>
+<h1>Guitar + Barre 2</h1>
 
-<h1>Guitar + Barre</h1>
+<div class="wrapper">
 
-<div class="melody">
-  <input id="melodyInput" placeholder="6/3 5/2 d:6-1@200$Am">
-  <button id="playBtn">Играть</button>
-</div>
+  <div class="barreColumn" id="barreColumn"></div>
 
-<div class="box">
-  <div class="barre-panel" id="barrePanel"></div>
-  <div id="box"></div>
+  <div class="box" id="box"></div>
+
 </div>
 
 <div class="chords">
@@ -175,29 +153,21 @@ h1 { margin:10px; }
 <script>
 let audioCtx=null;
 const audioBuffers={};
+
 const heldFrets={};
+let barreFret=null;
+
 let currentChord=null;
-let activeBarre=null;
+
 let pointerDown=false;
 const touchedStrings=new Set();
-let activeFretTouch=null;
 
-const chords={
-  "Am":{2:1,3:2,4:2},
-  "Em":{5:2,4:2},
-  "C":{2:1,4:2,5:3},
-  "G":{1:3,6:3,5:2},
-  "Dm":{1:1,2:3,3:2},
-  "E":{3:1,4:2,5:2},
-  "A":{2:2,3:2,4:2},
-  "D":{1:2,2:3,3:2}
-};
-
-/* audio */
+/* AUDIO */
 function unlockAudio(){
   if(audioCtx) return;
   audioCtx=new (window.AudioContext||window.webkitAudioContext)();
 }
+
 function playSound(key){
   if(!audioCtx) return;
 
@@ -218,44 +188,54 @@ function playSound(key){
   src.start(0);
 }
 
-/* welcome */
-document.getElementById("startBtn").onclick=()=>{
-  unlockAudio();
-  audioCtx.resume();
-
-  document.getElementById("welcome").style.display="none";
-};
-
-/* barre build */
-const barrePanel=document.getElementById("barrePanel");
+/* BARRE BUILD */
+const barreColumn=document.getElementById("barreColumn");
 
 for(let f=1;f<=6;f++){
   const b=document.createElement("div");
   b.className="barre";
+  b.dataset.fret=f;
   b.textContent=f;
 
-  b.addEventListener("pointerdown",()=>{
+  b.addEventListener("pointerdown",e=>{
     unlockAudio();
-    activeBarre=f;
-
-    document.querySelectorAll(".barre").forEach(el=>el.classList.remove("active"));
-    b.classList.add("active");
+    barreFret=f;
+    updateBarreUI();
   });
 
-  b.addEventListener("pointerup",()=>{
-    activeBarre=null;
-    b.classList.remove("active");
+  b.addEventListener("pointermove",e=>{
+    if(e.pressure===0) return;
+    const el=document.elementFromPoint(e.clientX,e.clientY);
+    if(!el || !el.classList.contains("barre")) return;
+
+    const newF=+el.dataset.fret;
+    if(barreFret===newF) return;
+
+    barreFret=newF;
+    updateBarreUI();
   });
 
-  b.addEventListener("pointerleave",()=>{
-    activeBarre=null;
-    b.classList.remove("active");
-  });
+  b.addEventListener("pointerup",releaseBarre);
+  b.addEventListener("pointerleave",releaseBarre);
+  b.addEventListener("pointercancel",releaseBarre);
 
-  barrePanel.appendChild(b);
+  barreColumn.appendChild(b);
 }
 
-/* build strings */
+function updateBarreUI(){
+  document.querySelectorAll(".barre").forEach(b=>b.classList.remove("active"));
+  if(barreFret){
+    document.querySelector(`.barre[data-fret="${barreFret}"]`)
+      ?.classList.add("active");
+  }
+}
+
+function releaseBarre(){
+  barreFret=null;
+  updateBarreUI();
+}
+
+/* BUILD STRINGS */
 const box=document.getElementById("box");
 
 for(let s=6;s>=1;s--){
@@ -267,38 +247,33 @@ for(let s=6;s>=1;s--){
     const fret=document.createElement("div");
     fret.className="fret";
     fret.textContent=f;
+    fret.dataset.string=s;
+    fret.dataset.fret=f;
 
     fret.addEventListener("pointerdown",e=>{
       e.stopPropagation();
       unlockAudio();
-      activeFretTouch={string:s,fret:f};
-
-      clearFrets(s);
       heldFrets[s]=f;
+      clearFrets(s);
       fret.classList.add("active");
     });
 
     fret.addEventListener("pointermove",e=>{
-      if(!activeFretTouch) return;
+      if(e.pressure===0) return;
 
       const el=document.elementFromPoint(e.clientX,e.clientY);
       if(!el || !el.classList.contains("fret")) return;
-      if(el.parentElement.dataset.string!=s) return;
+      if(el.dataset.string!==String(s)) return;
 
-      const newF=+el.textContent;
-      if(activeFretTouch.fret===newF) return;
+      const newF=+el.dataset.fret;
+      if(heldFrets[s]===newF) return;
 
-      activeFretTouch.fret=newF;
       heldFrets[s]=newF;
-
       clearFrets(s);
       el.classList.add("active");
     });
 
     const release=()=>{
-      if(activeFretTouch && activeFretTouch.string===s){
-        activeFretTouch=null;
-      }
       delete heldFrets[s];
       clearFrets(s);
     };
@@ -325,17 +300,19 @@ for(let s=6;s>=1;s--){
   box.appendChild(stringEl);
 }
 
+/* HELPERS */
 function clearFrets(s){
-  document.querySelectorAll(`.string[data-string="${s}"] .fret`)
+  document.querySelectorAll(`.fret[data-string="${s}"]`)
     .forEach(el=>el.classList.remove("active"));
 }
 
-/* play */
+/* PLAY */
 function playNote(s,f){
   const key=f?`${s}-${f}`:String(s);
   playSound(key);
 
   const stringEl=document.querySelector(`.string[data-string="${s}"]`);
+
   stringEl.classList.add("vibrate");
   setTimeout(()=>stringEl.classList.remove("vibrate"),150);
 
@@ -344,23 +321,25 @@ function playNote(s,f){
   setTimeout(()=>strumEl.classList.remove("active"),150);
 
   if(f){
-    const fretEl=document.querySelector(`.string[data-string="${s}"] .fret:nth-child(${f})`);
+    const fretEl=document.querySelector(`.fret[data-string="${s}"][data-fret="${f}"]`);
     fretEl.classList.add("active");
-    setTimeout(()=>{ if(!heldFrets[s]) fretEl.classList.remove("active"); },150);
+    setTimeout(()=>{
+      if(!heldFrets[s]) fretEl.classList.remove("active");
+    },150);
   }
 }
 
 function playString(s){
   let f=null;
 
-  if(heldFrets[s]!=null) f=heldFrets[s];
-  else if(activeBarre!==null) f=activeBarre;
+  if(barreFret) f=barreFret;
+  else if(heldFrets[s]!=null) f=heldFrets[s];
   else if(currentChord && chords[currentChord]?.[s]) f=chords[currentChord][s];
 
   playNote(s,f);
 }
 
-/* strum */
+/* STRUM */
 function handleStrum(e){
   const el=document.elementFromPoint(e.clientX,e.clientY);
   if(!el || !el.classList.contains("strum")) return;
@@ -384,27 +363,18 @@ document.addEventListener("pointerup",()=>{
   touchedStrings.clear();
 });
 
-/* swipe outside */
-document.addEventListener("pointerdown",e=>{
-  if(e.target.closest("input, button")) return;
+/* CHORDS */
+const chords={
+  "Am":{2:1,3:2,4:2},
+  "Em":{5:2,4:2},
+  "C":{2:1,4:2,5:3},
+  "G":{1:3,6:3,5:2},
+  "Dm":{1:1,2:3,3:2},
+  "E":{3:1,4:2,5:2},
+  "A":{2:2,3:2,4:2},
+  "D":{1:2,2:3,3:2}
+};
 
-  const rect=box.getBoundingClientRect();
-  const margin=80;
-
-  if(
-    e.clientX>=rect.left-margin &&
-    e.clientX<=rect.right+margin &&
-    e.clientY>=rect.top &&
-    e.clientY<=rect.bottom
-  ){
-    unlockAudio();
-    pointerDown=true;
-    touchedStrings.clear();
-    handleStrum(e);
-  }
-});
-
-/* chords */
 const buttons=document.querySelectorAll(".chords button");
 
 buttons.forEach(btn=>{
@@ -417,100 +387,25 @@ buttons.forEach(btn=>{
     if(currentChord===name){
       currentChord=null;
       btn.classList.remove("active");
-      document.querySelectorAll(".fret").forEach(f=>f.classList.remove("chord-active"));
+      document.querySelectorAll(".fret")
+        .forEach(f=>f.classList.remove("chord-active"));
       return;
     }
 
-    currentChord=name;
-
     buttons.forEach(b=>b.classList.remove("active"));
-    document.querySelectorAll(".fret").forEach(f=>f.classList.remove("chord-active"));
+    document.querySelectorAll(".fret")
+      .forEach(f=>f.classList.remove("chord-active"));
 
+    currentChord=name;
     btn.classList.add("active");
 
     for(let s in chords[name]){
       const f=chords[name][s];
-      const el=document.querySelector(`.string[data-string="${s}"] .fret:nth-child(${f})`);
+      const el=document.querySelector(`.fret[data-string="${s}"][data-fret="${f}"]`);
       el.classList.add("chord-active");
     }
   });
 });
-
-/* melody */
-document.getElementById("playBtn").onclick=()=>{
-  const text=document.getElementById("melodyInput").value.trim();
-  if(!text) return;
-
-  currentChord=null;
-  activeBarre=null;
-
-  buttons.forEach(b=>b.classList.remove("active"));
-  document.querySelectorAll(".fret").forEach(f=>f.classList.remove("chord-active","active"));
-  document.querySelectorAll(".barre").forEach(b=>b.classList.remove("active"));
-  for(let k in heldFrets) delete heldFrets[k];
-
-  playMelody(text);
-};
-
-function playMelody(text){
-  const tokens=text.split(/\s+/);
-  let i=0;
-
-  function step(){
-    if(i>=tokens.length) return;
-
-    const t=tokens[i];
-
-    if(t.startsWith("d")||t.startsWith("u")){
-      const dir=t[0];
-      const range=t.match(/:(\d+)-(\d+)/);
-      const speed=t.match(/@(\d+)/);
-      const chord=t.match(/\$(\w+)/);
-
-      let s1=range?+range[1]:(dir==="d"?6:1);
-      let s2=range?+range[2]:(dir==="d"?1:6);
-      let sp=speed?+speed[1]:80;
-      let ch=chord?chord[1]:null;
-
-      strum(s1,s2,sp,ch);
-
-      i++;
-      setTimeout(step, sp*Math.abs(s2-s1)+sp);
-      return;
-    }
-
-    if(t.includes("/")){
-      const [s,f]=t.split("/");
-      playNote(+s,+f);
-    } else if(/^[1-6]$/.test(t)){
-      playString(+t);
-    }
-
-    i++;
-    setTimeout(step,250);
-  }
-
-  step();
-}
-
-function strum(s1,s2,sp,ch){
-  let step = s1<=s2?1:-1;
-
-  for(let s=s1,i=0; step>0?s<=s2:s>=s2; s+=step,i++){
-    setTimeout(()=>{
-      let fret=null;
-
-      if(ch && chords[ch]?.[s]){
-        fret=chords[ch][s];
-        const el=document.querySelector(`.string[data-string="${s}"] .fret:nth-child(${fret})`);
-        el.classList.add("active");
-        setTimeout(()=>el.classList.remove("active"),150);
-      }
-
-      playNote(s,fret);
-    }, i*sp);
-  }
-}
 </script>
 
 </body>
