@@ -36,7 +36,7 @@ h1 { margin:10px; }
 .barreColumn {
   display:flex;
   flex-direction:column;
-  height:85vh; /* ⬅️ было 60vh */
+  height:60vh;
   width:40px;
 }
 
@@ -47,7 +47,6 @@ h1 { margin:10px; }
   display:flex;
   align-items:center;
   justify-content:center;
-  font-size:18px; /* чуть крупнее */
 }
 
 .barre.active {
@@ -64,7 +63,7 @@ h1 { margin:10px; }
   display:flex;
   flex-direction:column;
   width:40px;
-  height:85vh; /* ⬅️ было 60vh */
+  height:60vh;
   border:2px solid black;
   background:lightgrey;
   position:relative;
@@ -102,7 +101,6 @@ h1 { margin:10px; }
   display:flex;
   align-items:center;
   justify-content:center;
-  font-size:18px; /* ⬅️ увеличили текст */
 }
 
 .fret.active { background:orange; }
@@ -120,7 +118,7 @@ h1 { margin:10px; }
   display:grid;
   grid-template-columns:repeat(4,90px);
   gap:10px;
-  margin:25px 15px; /* ⬅️ чуть ниже */
+  margin:15px;
 }
 
 .chords button.active {
@@ -131,7 +129,7 @@ h1 { margin:10px; }
 
 <body>
 
-<h1>Guitar + Barre 3</h1>
+<h1>Guitar + Barre 2</h1>
 
 <div class="wrapper">
 
@@ -153,7 +151,261 @@ h1 { margin:10px; }
 </div>
 
 <script>
-/* JS НЕ ТРОГАЛСЯ — ВСТАВЬ СВОЙ ИЗ ПОСЛЕДНЕЙ РАБОЧЕЙ ВЕРСИИ */
+let audioCtx=null;
+const audioBuffers={};
+
+const heldFrets={};
+let barreFret=null;
+
+let currentChord=null;
+
+let pointerDown=false;
+const touchedStrings=new Set();
+
+/* AUDIO */
+function unlockAudio(){
+  if(audioCtx) return;
+  audioCtx=new (window.AudioContext||window.webkitAudioContext)();
+}
+
+function playSound(key){
+  if(!audioCtx) return;
+
+  if(!audioBuffers[key]){
+    fetch(`sounds/${key}.mp3`)
+      .then(r=>r.arrayBuffer())
+      .then(buf=>audioCtx.decodeAudioData(buf))
+      .then(decoded=>{
+        audioBuffers[key]=decoded;
+        playSound(key);
+      });
+    return;
+  }
+
+  const src=audioCtx.createBufferSource();
+  src.buffer=audioBuffers[key];
+  src.connect(audioCtx.destination);
+  src.start(0);
+}
+
+/* BARRE BUILD */
+const barreColumn=document.getElementById("barreColumn");
+
+for(let f=1;f<=6;f++){
+  const b=document.createElement("div");
+  b.className="barre";
+  b.dataset.fret=f;
+  b.textContent=f;
+
+  b.addEventListener("pointerdown",e=>{
+    unlockAudio();
+    barreFret=f;
+    updateBarreUI();
+  });
+
+  b.addEventListener("pointermove",e=>{
+    if(e.pressure===0) return;
+    const el=document.elementFromPoint(e.clientX,e.clientY);
+    if(!el || !el.classList.contains("barre")) return;
+
+    const newF=+el.dataset.fret;
+    if(barreFret===newF) return;
+
+    barreFret=newF;
+    updateBarreUI();
+  });
+
+  b.addEventListener("pointerup",releaseBarre);
+  b.addEventListener("pointerleave",releaseBarre);
+  b.addEventListener("pointercancel",releaseBarre);
+
+  barreColumn.appendChild(b);
+}
+
+function updateBarreUI(){
+  document.querySelectorAll(".barre").forEach(b=>b.classList.remove("active"));
+  if(barreFret){
+    document.querySelector(`.barre[data-fret="${barreFret}"]`)
+      ?.classList.add("active");
+  }
+}
+
+function releaseBarre(){
+  barreFret=null;
+  updateBarreUI();
+}
+
+/* BUILD STRINGS */
+const box=document.getElementById("box");
+
+for(let s=6;s>=1;s--){
+  const stringEl=document.createElement("div");
+  stringEl.className="string";
+  stringEl.dataset.string=s;
+
+  for(let f=1;f<=6;f++){
+    const fret=document.createElement("div");
+    fret.className="fret";
+    fret.textContent=f;
+    fret.dataset.string=s;
+    fret.dataset.fret=f;
+
+    fret.addEventListener("pointerdown",e=>{
+      e.stopPropagation();
+      unlockAudio();
+      heldFrets[s]=f;
+      clearFrets(s);
+      fret.classList.add("active");
+    });
+
+    fret.addEventListener("pointermove",e=>{
+      if(e.pressure===0) return;
+
+      const el=document.elementFromPoint(e.clientX,e.clientY);
+      if(!el || !el.classList.contains("fret")) return;
+      if(el.dataset.string!==String(s)) return;
+
+      const newF=+el.dataset.fret;
+      if(heldFrets[s]===newF) return;
+
+      heldFrets[s]=newF;
+      clearFrets(s);
+      el.classList.add("active");
+    });
+
+    const release=()=>{
+      delete heldFrets[s];
+      clearFrets(s);
+    };
+
+    fret.addEventListener("pointerup",release);
+    fret.addEventListener("pointerleave",release);
+    fret.addEventListener("pointercancel",release);
+
+    stringEl.appendChild(fret);
+  }
+
+  const strum=document.createElement("div");
+  strum.className="strum";
+  strum.dataset.string=s;
+
+  strum.addEventListener("pointerdown",e=>{
+    unlockAudio();
+    pointerDown=true;
+    touchedStrings.clear();
+    handleStrum(e);
+  });
+
+  stringEl.appendChild(strum);
+  box.appendChild(stringEl);
+}
+
+/* HELPERS */
+function clearFrets(s){
+  document.querySelectorAll(`.fret[data-string="${s}"]`)
+    .forEach(el=>el.classList.remove("active"));
+}
+
+/* PLAY */
+function playNote(s,f){
+  const key=f?`${s}-${f}`:String(s);
+  playSound(key);
+
+  const stringEl=document.querySelector(`.string[data-string="${s}"]`);
+
+  stringEl.classList.add("vibrate");
+  setTimeout(()=>stringEl.classList.remove("vibrate"),150);
+
+  const strumEl=stringEl.querySelector(".strum");
+  strumEl.classList.add("active");
+  setTimeout(()=>strumEl.classList.remove("active"),150);
+
+  if(f){
+    const fretEl=document.querySelector(`.fret[data-string="${s}"][data-fret="${f}"]`);
+    fretEl.classList.add("active");
+    setTimeout(()=>{
+      if(!heldFrets[s]) fretEl.classList.remove("active");
+    },150);
+  }
+}
+
+function playString(s){
+  let f=null;
+
+  if(barreFret) f=barreFret;
+  else if(heldFrets[s]!=null) f=heldFrets[s];
+  else if(currentChord && chords[currentChord]?.[s]) f=chords[currentChord][s];
+
+  playNote(s,f);
+}
+
+/* STRUM */
+function handleStrum(e){
+  const el=document.elementFromPoint(e.clientX,e.clientY);
+  if(!el || !el.classList.contains("strum")) return;
+
+  const s=el.dataset.string;
+  if(touchedStrings.has(s)) return;
+
+  touchedStrings.add(s);
+  playString(s);
+}
+
+document.addEventListener("pointermove",e=>{
+  if(pointerDown){
+    e.preventDefault();
+    handleStrum(e);
+  }
+},{passive:false});
+
+document.addEventListener("pointerup",()=>{
+  pointerDown=false;
+  touchedStrings.clear();
+});
+
+/* CHORDS */
+const chords={
+  "Am":{2:1,3:2,4:2},
+  "Em":{5:2,4:2},
+  "C":{2:1,4:2,5:3},
+  "G":{1:3,6:3,5:2},
+  "Dm":{1:1,2:3,3:2},
+  "E":{3:1,4:2,5:2},
+  "A":{2:2,3:2,4:2},
+  "D":{1:2,2:3,3:2}
+};
+
+const buttons=document.querySelectorAll(".chords button");
+
+buttons.forEach(btn=>{
+  btn.addEventListener("pointerdown",e=>{
+    e.preventDefault();
+    unlockAudio();
+
+    const name=btn.dataset.chord;
+
+    if(currentChord===name){
+      currentChord=null;
+      btn.classList.remove("active");
+      document.querySelectorAll(".fret")
+        .forEach(f=>f.classList.remove("chord-active"));
+      return;
+    }
+
+    buttons.forEach(b=>b.classList.remove("active"));
+    document.querySelectorAll(".fret")
+      .forEach(f=>f.classList.remove("chord-active"));
+
+    currentChord=name;
+    btn.classList.add("active");
+
+    for(let s in chords[name]){
+      const f=chords[name][s];
+      const el=document.querySelector(`.fret[data-string="${s}"][data-fret="${f}"]`);
+      el.classList.add("chord-active");
+    }
+  });
+});
 </script>
 
 </body>
