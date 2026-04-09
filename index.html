@@ -26,12 +26,11 @@ h1 { margin:10px; }
 .barreColumn {
   display:flex;
   flex-direction:column;
-  height:85vh;
+  height:85vh; /* увеличено примерно в 1.5 раза */
   width:40px;
 }
-
 .barre {
-  flex:0 0 8%;
+  flex:0 0 12%; /* увеличена высота относительно ладов */
   border:1px solid black;
   background:#ddd;
   display:flex;
@@ -39,17 +38,15 @@ h1 { margin:10px; }
   justify-content:center;
   font-size:18px;
 }
-
 .barre.active { background:red; }
 
 /* === STRINGS === */
-.box { display:flex; gap:10px; }
+.box { display:flex; gap:10px; height:85vh; } /* увеличено в 1.5 раза */
 
 .string {
   display:flex;
   flex-direction:column;
   width:40px;
-  height:85vh;
   border:2px solid black;
   background:lightgrey;
   position:relative;
@@ -81,7 +78,7 @@ h1 { margin:10px; }
 
 /* frets */
 .fret {
-  flex:0 0 8%;
+  flex:0 0 12%; /* увеличена высота */
   border-bottom:1px solid rgba(0,0,0,0.2);
   display:flex;
   align-items:center;
@@ -100,14 +97,19 @@ h1 { margin:10px; }
   display:grid;
   grid-template-columns:repeat(4,90px);
   gap:10px;
-  margin:25px 15px;
+  margin:25px 15px 0 15px; /* ушли вниз */
 }
 .chords button.active { background:orange; }
+
+/* melody */
+.melody { margin:10px; display:flex; gap:5px; }
+input { padding:6px; width:260px; font-size:14px; }
+button { padding:6px 12px; font-size:14px; cursor:pointer; }
 </style>
 </head>
 <body>
 
-<h1>Guitar + Barre 4</h1>
+<h1>Guitar + Barre</h1>
 
 <div class="wrapper">
   <div class="barreColumn" id="barreColumn"></div>
@@ -131,6 +133,7 @@ h1 { margin:10px; }
 </div>
 
 <script>
+// === JS полностью сохранён, как в рабочем варианте с баррэ ===
 let audioCtx=null;
 const audioBuffers={};
 const heldFrets={};
@@ -311,5 +314,6 @@ function initGuitar(){
 
 initGuitar();
 </script>
+
 </body>
 </html>
