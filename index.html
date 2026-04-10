@@ -163,14 +163,22 @@ function unlockAudio(){
 
 function playSound(key){
   if(!audioCtx) unlockAudio();
+
   if(!audioBuffers[key]) {
     fetch(SOUND_FILES[key])
-      .then(r=>r.arrayBuffer())
+      .then(r=>{
+        if(!r.ok) throw new Error("no file");
+        return r.arrayBuffer();
+      })
       .then(buf=>audioCtx.decodeAudioData(buf))
-      .then(decoded=>{ audioBuffers[key]=decoded; playSound(key); })
-      .catch(err=>console.error("Audio error:", key, err));
+      .then(decoded=>{
+        audioBuffers[key]=decoded;
+        playSound(key);
+      })
+      .catch(err=>console.log("Audio error:", key));
     return;
   }
+
   const src = audioCtx.createBufferSource();
   src.buffer = audioBuffers[key];
   src.connect(audioCtx.destination);
@@ -181,7 +189,7 @@ function initGuitar(){
   const box = document.getElementById("box");
   const buttons=document.querySelectorAll(".chords button");
 
-  // Создание струн и ладов
+  // === СТРУНЫ И ЛАДЫ ===
   for(let s=6;s>=1;s--){
     const stringEl=document.createElement("div");
     stringEl.className="string";
@@ -194,14 +202,39 @@ function initGuitar(){
       fret.dataset.string=s;
       fret.dataset.fret=f;
 
+      // НАЖАТИЕ
       fret.addEventListener("pointerdown", e=>{
         e.stopPropagation();
         unlockAudio();
         heldFrets[s]=f;
+        clearFrets(s);
         fret.classList.add("active");
       });
 
-      const release=()=>{ delete heldFrets[s]; fret.classList.remove("active"); };
+      // 🔥 ВЕРТИКАЛЬНЫЙ СВАЙП
+      fret.addEventListener("pointermove", e=>{
+        if(e.pressure===0) return;
+
+        const el=document.elementFromPoint(e.clientX,e.clientY);
+        if(!el) return;
+
+        const newFret = el.closest(".fret");
+        if(!newFret) return;
+        if(newFret.dataset.string !== String(s)) return;
+
+        const newF = +newFret.dataset.fret;
+        if(heldFrets[s] === newF) return;
+
+        heldFrets[s] = newF;
+        clearFrets(s);
+        newFret.classList.add("active");
+      });
+
+      const release=()=>{
+        delete heldFrets[s];
+        clearFrets(s);
+      };
+
       fret.addEventListener("pointerup", release);
       fret.addEventListener("pointerleave", release);
       fret.addEventListener("pointercancel", release);
@@ -224,10 +257,17 @@ function initGuitar(){
     box.appendChild(stringEl);
   }
 
+  function clearFrets(s){
+    document.querySelectorAll(`.fret[data-string="${s}"]`)
+      .forEach(el=>el.classList.remove("active"));
+  }
+
   function playNote(s,f,chordName){
     let key=String(s);
+
     if(f!=null) key=`${s}-${f}`;
-    else if(chordName && chords[chordName]?.[s]) key=`${s}-${chords[chordName][s]}`;
+    else if(chordName && chords[chordName]?.[s])
+      key=`${s}-${chords[chordName][s]}`;
 
     playSound(key);
 
@@ -248,16 +288,23 @@ function initGuitar(){
 
   function playString(s,chordName){
     let f=null;
+
     if(heldFrets[s]!=null) f=heldFrets[s];
-    else if(chordName && chords[chordName]?.[s]) f=chords[chordName][s];
+    else if(chordName && chords[chordName]?.[s])
+      f=chords[chordName][s];
+
     playNote(s,f,chordName);
   }
 
+  // 🔥 ИСПРАВЛЕННЫЙ СВАЙП
   function handleStrum(e){
     const el=document.elementFromPoint(e.clientX,e.clientY);
-    if(!el || !el.classList.contains("strum")) return;
+    if(!el) return;
 
-    const s=el.dataset.string;
+    const stringEl = el.closest(".string");
+    if(!stringEl) return;
+
+    const s=stringEl.dataset.string;
     if(!s || touchedStrings.has(s)) return;
 
     touchedStrings.add(s);
@@ -265,16 +312,24 @@ function initGuitar(){
   }
 
   document.addEventListener("pointermove",e=>{
-    if(pointerDown){ e.preventDefault(); handleStrum(e); }
+    if(pointerDown){
+      e.preventDefault();
+      handleStrum(e);
+    }
   },{passive:false});
 
-  document.addEventListener("pointerup",()=>{ pointerDown=false; touchedStrings.clear(); });
+  document.addEventListener("pointerup",()=>{
+    pointerDown=false;
+    touchedStrings.clear();
+  });
 
-  // Свайп извне
+  // СВАЙП СНАРУЖИ
   document.addEventListener("pointerdown", e => {
     if(e.target.closest("input, button")) return;
+
     const rect = box.getBoundingClientRect();
     const margin = 60;
+
     if(e.clientX>=rect.left-margin && e.clientX<=rect.right+margin &&
        e.clientY>=rect.top-margin && e.clientY<=rect.bottom+margin){
       unlockAudio();
@@ -284,106 +339,46 @@ function initGuitar(){
     }
   });
 
-  // Кнопки аккордов
-buttons.forEach(btn=>{
-  btn.addEventListener("pointerdown", e=>{
-    e.preventDefault();
-    unlockAudio();
-    pointerDown=false; touchedStrings.clear();
+  // АККОРДЫ
+  buttons.forEach(btn=>{
+    btn.addEventListener("pointerdown", e=>{
+      e.preventDefault();
+      unlockAudio();
 
-    const name=btn.dataset.chord;
+      pointerDown=false;
+      touchedStrings.clear();
 
-    // Сначала убрать предыдущий аккорд
-    document.querySelectorAll(".fret").forEach(f=>{
-      f.classList.remove("chord-active","active");
-    });
-    for(let k in heldFrets) delete heldFrets[k];
-    buttons.forEach(b=>b.classList.remove("active"));
+      const name=btn.dataset.chord;
 
-    // Если нажали на тот же аккорд, выключаем и выходим
-    if(currentChord===name){
-      currentChord=null;
-      return;
-    }
+      document.querySelectorAll(".fret").forEach(f=>{
+        f.classList.remove("chord-active","active");
+      });
 
-    currentChord=name;
-    btn.classList.add("active");
+      for(let k in heldFrets) delete heldFrets[k];
+      buttons.forEach(b=>b.classList.remove("active"));
 
-    // Устанавливаем только нужные лады
-    for(let s in chords[name]){
-      const f = chords[name][s];
-      heldFrets[s] = f;
-      const el=document.querySelector(`.fret[data-string="${s}"][data-fret="${f}"]`);
-      if(el) el.classList.add("chord-active");
-    }
-  });
-});
-
-  // Мелодия
-  document.getElementById("playBtn").onclick=()=>{
-    const text=document.getElementById("melodyInput").value.trim();
-    if(!text) return;
-
-    currentChord=null;
-    buttons.forEach(b=>b.classList.remove("active"));
-    document.querySelectorAll(".fret").forEach(f=>f.classList.remove("chord-active","active"));
-    for(let k in heldFrets) delete heldFrets[k];
-
-    playMelody(text);
-  };
-
-  function playMelody(text){
-    const tokens=text.trim().split(/\s+/);
-    let i=0;
-
-    function step(){
-      if(i>=tokens.length) return;
-      const t=tokens[i];
-
-      if(t.startsWith("d")||t.startsWith("u")){
-        const dir=t[0];
-        const range=t.match(/:(\d+)-(\d+)/);
-        const speed=t.match(/@(\d+)/);
-        const chord=t.match(/\$(\w+)/);
-        let s1=range?+range[1]:dir==="d"?6:1;
-        let s2=range?+range[2]:dir==="d"?1:6;
-        let sp=speed?+speed[1]:80;
-        strum(s1,s2,sp,chord?chord[1]:null);
-        i++;
-        setTimeout(step, sp*Math.abs(s2-s1)+sp);
+      if(currentChord===name){
+        currentChord=null;
         return;
       }
 
-      if(t.includes("/")){
-        const [s,f]=t.split("/");
-        let chord=null;
-        if(t.includes("$")){
-          const m=t.match(/\$(\w+)/);
-          if(m) chord=m[1];
-        }
-        playNote(+s,+f,chord);
-      } else if(/^[1-6]$/.test(t)){
-        playString(+t);
+      currentChord=name;
+      btn.classList.add("active");
+
+      for(let s in chords[name]){
+        const f = chords[name][s];
+        heldFrets[s] = f;
+
+        const el=document.querySelector(`.fret[data-string="${s}"][data-fret="${f}"]`);
+        if(el) el.classList.add("chord-active");
       }
-
-      i++;
-      setTimeout(step,250);
-    }
-
-    step();
-  }
-
-  function strum(s1,s2,sp,chordName){
-    let step = s1<=s2?1:-1;
-    for(let s=s1,i=0; step>0?s<=s2:s>=s2; s+=step,i++){
-      setTimeout(()=>{ playString(s,chordName); }, i*sp);
-    }
-  }
+    });
+  });
 
   document.addEventListener("contextmenu", e=>e.preventDefault());
 }
 
-// Welcome screen
+// START
 document.getElementById("startBtn").onclick=()=>{
   unlockAudio();
   audioCtx.resume();
