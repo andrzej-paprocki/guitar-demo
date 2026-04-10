@@ -4,9 +4,11 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Guitar Universal Audio</title>
+
 <style>
 html, body {
-  margin:0; padding:0;
+  margin:0;
+  padding:0;
   touch-action:none;
   background:pink;
   font-family:sans-serif;
@@ -14,82 +16,137 @@ html, body {
   flex-direction:column;
   align-items:center;
 }
-* { user-select:none; -webkit-user-select:none; -webkit-touch-callout:none; -webkit-tap-highlight-color:transparent; }
+
+* {
+  user-select:none;
+  -webkit-user-select:none;
+  -webkit-touch-callout:none;
+  -webkit-tap-highlight-color:transparent;
+}
 
 h1 { margin:10px; }
 
-.box { display:flex; gap:15px; }
+/* === LAYOUT === */
+.wrapper {
+  display:flex;
+  gap:10px;
+}
+
+/* === BARRE === */
+.barreColumn {
+  display:flex;
+  flex-direction:column;
+  height:60vh;
+  width:40px;
+}
+
+.barre {
+	border-radius: 10px 0px 0px 10px;
+  flex:0 0 50px;
+  border-bottom:1px solid black;
+  background:#ddd;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+}
+
+.barre.active {
+  background:red;
+}
+
+/* === STRINGS === */
+.box {
+  display:flex;
+  gap:10px;
+}
 
 .string {
   display:flex;
   flex-direction:column;
-  width:50px;
+  width:40px;
   height:60vh;
-  border:2px solid black;
-  background:lightgrey;
+  	/*border:1px solid black;*/
+  	/*background:lightgrey;*/
+  position:relative;
 }
 
+.string::after {
+  content:"";
+  position:absolute;
+  left:50%;
+  top:0;
+  bottom:0;
+  width:2px;
+  background:black;
+  transform:translateX(-50%);
+  opacity:0.6;
+}
+
+/* vibration */
+.string.vibrate::after {
+  animation:vibe 0.15s linear;
+}
+
+@keyframes vibe {
+  0% { transform:translateX(-50%) }
+  25% { transform:translateX(-48%) }
+  50% { transform:translateX(-52%) }
+  75% { transform:translateX(-49%) }
+  100% { transform:translateX(-50%) }
+}
+
+/* frets */
 .fret {
-  flex:0 0 8%;
+  flex:0 0 50px;
   border-bottom:1px solid rgba(0,0,0,0.2);
+  	border-radius: 20px;
+	background:grey;
+	z-index: 2;
+	color: white;
   display:flex;
   align-items:center;
   justify-content:center;
 }
 
-.fret.active, .fret.chord-active { background:orange; }
+.fret.active { background:orange; }
+.fret.chord-active { background:#ffcc66; }
 
-.strum { flex:1; background:rgba(0,0,0,0.05); }
+/* strum */
+.strum {
+  	display:flex;
+  	flex-direction:column;
+  	/*flex:0 0 100px;*/
+  	width:40px;
+ 	height:60vh;
+	z-index: 2;
+  	/*background:rgba(0,0,0,0.05);*/
+}
+
 .strum.active { background:orange; }
 
+/* chords */
 .chords {
   display:grid;
   grid-template-columns:repeat(4,90px);
   gap:10px;
-  margin:15px 10px;
+  margin:15px;
 }
-.chords button { height:50px; border:2px solid black; cursor:pointer; }
-.chords button.active { background:orange; }
 
-.melody {
-  margin:10px;
-  display:flex;
-  gap:5px;
-}
-input { padding:6px; width:260px; font-size:14px; }
-button { padding:6px 12px; font-size:14px; cursor:pointer; }
-
-#welcome {
-  position:fixed;
-  top:0; left:0; width:100%; height:100%;
-  background:white;
-  display:flex;
-  flex-direction:column;
-  justify-content:center;
-  align-items:center;
-  z-index:9999;
+.chords button.active {
+  background:orange;
 }
 </style>
 </head>
 
 <body>
 
-<div id="welcome">
-  <img src="img/guitar.png">
-  <h2>Guitar Universal Audio</h2>
-  <button id="okBtn">OK</button>
+<h1>Guitar + Barre 2</h1>
+<div class="wrapper">
+  <div class="barreColumn" id="barreColumn"></div>
+  <div class="box" id="box"></div>
 </div>
 
-<h1>Guitar 10</h1>
-
-<div class="melody">
-  <input id="melodyInput">
-  <button id="playBtn">Играть</button>
-</div>
-
-<div class="box" id="box" style="display:none;"></div>
-
-<div class="chords" style="display:none;">
+<div class="chords">
   <button data-chord="Am">Am</button>
   <button data-chord="Em">Em</button>
   <button data-chord="C">C</button>
@@ -103,11 +160,217 @@ button { padding:6px 12px; font-size:14px; cursor:pointer; }
 <script>
 let audioCtx=null;
 const audioBuffers={};
+
 const heldFrets={};
+let barreFret=null;
+
 let currentChord=null;
+
 let pointerDown=false;
 const touchedStrings=new Set();
 
+/* AUDIO */
+function unlockAudio(){
+  if(audioCtx) return;
+  audioCtx=new (window.AudioContext||window.webkitAudioContext)();
+}
+
+function playSound(key){
+  if(!audioCtx) return;
+
+  if(!audioBuffers[key]){
+    fetch(`sounds/${key}.mp3`)
+      .then(r=>r.arrayBuffer())
+      .then(buf=>audioCtx.decodeAudioData(buf))
+      .then(decoded=>{
+        audioBuffers[key]=decoded;
+        playSound(key);
+      });
+    return;
+  }
+
+  const src=audioCtx.createBufferSource();
+  src.buffer=audioBuffers[key];
+  src.connect(audioCtx.destination);
+  src.start(0);
+}
+
+/* BARRE BUILD */
+const barreColumn=document.getElementById("barreColumn");
+
+for(let f=1;f<=6;f++){
+  const b=document.createElement("div");
+  b.className="barre";
+  b.dataset.fret=f;
+  b.textContent=f;
+
+  b.addEventListener("pointerdown",e=>{
+    unlockAudio();
+    barreFret=f;
+    updateBarreUI();
+  });
+
+  b.addEventListener("pointermove",e=>{
+    if(e.pressure===0) return;
+    const el=document.elementFromPoint(e.clientX,e.clientY);
+    if(!el || !el.classList.contains("barre")) return;
+
+    const newF=+el.dataset.fret;
+    if(barreFret===newF) return;
+
+    barreFret=newF;
+    updateBarreUI();
+  });
+
+  b.addEventListener("pointerup",releaseBarre);
+  b.addEventListener("pointerleave",releaseBarre);
+  b.addEventListener("pointercancel",releaseBarre);
+
+  barreColumn.appendChild(b);
+}
+
+function updateBarreUI(){
+  document.querySelectorAll(".barre").forEach(b=>b.classList.remove("active"));
+  if(barreFret){
+    document.querySelector(`.barre[data-fret="${barreFret}"]`)
+      ?.classList.add("active");
+  }
+}
+
+function releaseBarre(){
+  barreFret=null;
+  updateBarreUI();
+}
+
+/* BUILD STRINGS */
+const box=document.getElementById("box");
+
+for(let s=6;s>=1;s--){
+  const stringEl=document.createElement("div");
+  stringEl.className="string";
+  stringEl.dataset.string=s;
+
+  for(let f=1;f<=6;f++){
+    const fret=document.createElement("div");
+    fret.className="fret";
+    fret.textContent=f;
+    fret.dataset.string=s;
+    fret.dataset.fret=f;
+
+    fret.addEventListener("pointerdown",e=>{
+      e.stopPropagation();
+      unlockAudio();
+      heldFrets[s]=f;
+      clearFrets(s);
+      fret.classList.add("active");
+    });
+
+    fret.addEventListener("pointermove",e=>{
+      if(e.pressure===0) return;
+
+      const el=document.elementFromPoint(e.clientX,e.clientY);
+      if(!el || !el.classList.contains("fret")) return;
+      if(el.dataset.string!==String(s)) return;
+
+      const newF=+el.dataset.fret;
+      if(heldFrets[s]===newF) return;
+
+      heldFrets[s]=newF;
+      clearFrets(s);
+      el.classList.add("active");
+    });
+
+    const release=()=>{
+      delete heldFrets[s];
+      clearFrets(s);
+    };
+
+    fret.addEventListener("pointerup",release);
+    fret.addEventListener("pointerleave",release);
+    fret.addEventListener("pointercancel",release);
+
+    stringEl.appendChild(fret);
+  }
+
+  const strum=document.createElement("div");
+  strum.className="strum";
+  strum.dataset.string=s;
+
+  strum.addEventListener("pointerdown",e=>{
+    unlockAudio();
+    pointerDown=true;
+    touchedStrings.clear();
+    handleStrum(e);
+  });
+
+  stringEl.appendChild(strum);
+  box.appendChild(stringEl);
+}
+
+/* HELPERS */
+function clearFrets(s){
+  document.querySelectorAll(`.fret[data-string="${s}"]`)
+    .forEach(el=>el.classList.remove("active"));
+}
+
+/* PLAY */
+function playNote(s,f){
+  const key=f?`${s}-${f}`:String(s);
+  playSound(key);
+
+  const stringEl=document.querySelector(`.string[data-string="${s}"]`);
+
+  stringEl.classList.add("vibrate");
+  setTimeout(()=>stringEl.classList.remove("vibrate"),150);
+
+  const strumEl=stringEl.querySelector(".strum");
+  strumEl.classList.add("active");
+  setTimeout(()=>strumEl.classList.remove("active"),150);
+
+  if(f){
+    const fretEl=document.querySelector(`.fret[data-string="${s}"][data-fret="${f}"]`);
+    fretEl.classList.add("active");
+    setTimeout(()=>{
+      if(!heldFrets[s]) fretEl.classList.remove("active");
+    },150);
+  }
+}
+
+function playString(s){
+  let f=null;
+
+  if(barreFret) f=barreFret;
+  else if(heldFrets[s]!=null) f=heldFrets[s];
+  else if(currentChord && chords[currentChord]?.[s]) f=chords[currentChord][s];
+
+  playNote(s,f);
+}
+
+/* STRUM */
+function handleStrum(e){
+  const el=document.elementFromPoint(e.clientX,e.clientY);
+  if(!el || !el.classList.contains("strum")) return;
+
+  const s=el.dataset.string;
+  if(touchedStrings.has(s)) return;
+
+  touchedStrings.add(s);
+  playString(s);
+}
+
+document.addEventListener("pointermove",e=>{
+  if(pointerDown){
+    e.preventDefault();
+    handleStrum(e);
+  }
+},{passive:false});
+
+document.addEventListener("pointerup",()=>{
+  pointerDown=false;
+  touchedStrings.clear();
+});
+
+/* CHORDS */
 const chords={
   "Am":{2:1,3:2,4:2},
   "Em":{5:2,4:2},
@@ -119,95 +382,37 @@ const chords={
   "D":{1:2,2:3,3:2}
 };
 
-const SOUND_FILES={};
-for(let s=1;s<=6;s++){
-  SOUND_FILES[s]=`sounds/${s}.mp3`;
-  for(let f=1;f<=6;f++) SOUND_FILES[`${s}-${f}`]=`sounds/${s}-${f}.mp3`;
-}
+const buttons=document.querySelectorAll(".chords button");
 
-function unlockAudio(){
-  if(audioCtx) return;
-  audioCtx=new (window.AudioContext||window.webkitAudioContext)();
-  audioCtx.resume();
-}
+buttons.forEach(btn=>{
+  btn.addEventListener("pointerdown",e=>{
+    e.preventDefault();
+    unlockAudio();
 
-function playSound(key){
-  if(!audioCtx) return;
+    const name=btn.dataset.chord;
 
-  if(!audioBuffers[key]){
-    fetch(SOUND_FILES[key])
-      .then(r=>r.arrayBuffer())
-      .then(buf=>audioCtx.decodeAudioData(buf))
-      .then(d=>{audioBuffers[key]=d; playSound(key);});
-    return;
-  }
-
-  const src=audioCtx.createBufferSource();
-  src.buffer=audioBuffers[key];
-  src.connect(audioCtx.destination);
-  src.start(0);
-}
-
-function initGuitar(){
-  const box=document.getElementById("box");
-  const chordsDiv=document.querySelector(".chords");
-  box.style.display="flex";
-  chordsDiv.style.display="grid";
-
-  for(let s=6;s>=1;s--){
-    const stringEl=document.createElement("div");
-    stringEl.className="string";
-    stringEl.dataset.string=s;
-
-    for(let f=1;f<=6;f++){
-      const fret=document.createElement("div");
-      fret.className="fret";
-      fret.textContent=f;
-      fret.dataset.string=s;
-      fret.dataset.fret=f;
-
-      fret.addEventListener("pointerdown",e=>{
-        e.stopPropagation();
-        heldFrets[s]=f;
-        fret.classList.add("active");
-      });
-
-      // 🔥 ВСТРОЕННЫЙ SWIPE
-      fret.addEventListener("pointermove",e=>{
-        if(e.pressure===0) return;
-
-        const el=document.elementFromPoint(e.clientX,e.clientY);
-        const newFret=el?.closest(".fret");
-        if(!newFret) return;
-        if(newFret.dataset.string!==String(s)) return;
-
-        const newF=+newFret.dataset.fret;
-        if(heldFrets[s]===newF) return;
-
-        heldFrets[s]=newF;
-
-        document.querySelectorAll(`.fret[data-string="${s}"]`)
-          .forEach(f=>f.classList.remove("active"));
-
-        newFret.classList.add("active");
-      });
-
-      stringEl.appendChild(fret);
+    if(currentChord===name){
+      currentChord=null;
+      btn.classList.remove("active");
+      document.querySelectorAll(".fret")
+        .forEach(f=>f.classList.remove("chord-active"));
+      return;
     }
 
-    const strum=document.createElement("div");
-    strum.className="strum";
-    strum.dataset.string=s;
+    buttons.forEach(b=>b.classList.remove("active"));
+    document.querySelectorAll(".fret")
+      .forEach(f=>f.classList.remove("chord-active"));
 
-    stringEl.appendChild(strum);
-    box.appendChild(stringEl);
-  }
-}
+    currentChord=name;
+    btn.classList.add("active");
 
-document.getElementById("okBtn").onclick=()=>{
-  document.getElementById("welcome").style.display="none";
-  initGuitar();
-};
+    for(let s in chords[name]){
+      const f=chords[name][s];
+      const el=document.querySelector(`.fret[data-string="${s}"][data-fret="${f}"]`);
+      el.classList.add("chord-active");
+    }
+  });
+});
 </script>
 
 </body>
