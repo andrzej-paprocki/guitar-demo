@@ -160,9 +160,11 @@ function initGuitar(){
         e.stopPropagation();
         unlockAudio();
         heldFrets[s]=f;
+        clearFrets(s);
         fret.classList.add("active");
-      });
-
+      });      
+      
+      
       const release=()=>{ 
         delete heldFrets[s]; 
         fret.classList.remove("active"); 
@@ -228,10 +230,32 @@ function initGuitar(){
     playString(s);
   }
 
+function clearFrets(s){
+  document.querySelectorAll(`.fret[data-string="${s}"]`)
+    .forEach(el=>el.classList.remove("active"));
+}  
+
+  /*
   document.addEventListener("pointermove",e=>{
     if(pointerDown){ e.preventDefault(); handleStrum(e); }
   },{passive:false});
+  */
 
+ fret.addEventListener("pointermove",e=>{
+  if(e.pressure===0) return;
+
+  const el=document.elementFromPoint(e.clientX,e.clientY);
+  if(!el || !el.classList.contains("fret")) return;
+  if(el.dataset.string!==String(s)) return;
+
+  const newF=+el.dataset.fret;
+  if(heldFrets[s]===newF) return;
+
+  heldFrets[s]=newF;
+  clearFrets(s);
+  el.classList.add("active");
+}); 
+  
   document.addEventListener("pointerup",()=>{
     pointerDown=false;
     touchedStrings.clear();
