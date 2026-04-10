@@ -235,11 +235,11 @@ function clearFrets(s){
     .forEach(el=>el.classList.remove("active"));
 }  
 
-  /*
+  
   document.addEventListener("pointermove",e=>{
     if(pointerDown){ e.preventDefault(); handleStrum(e); }
   },{passive:false});
-  */
+
 
  fret.addEventListener("pointermove",e=>{
   if(e.pressure===0) return;
