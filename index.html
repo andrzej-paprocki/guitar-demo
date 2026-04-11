@@ -26,6 +26,19 @@ html, body {
 
 h1 { margin:10px; }
 
+/* === WELCOME === */
+#welcome {
+  position:fixed;
+  inset:0;
+  background:black;
+  color:white;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  justify-content:center;
+  z-index:999;
+}
+
 /* === LAYOUT === */
 .wrapper {
   display:flex;
@@ -57,13 +70,13 @@ h1 { margin:10px; }
 /* === STRINGS === */
 .box {
   display:flex;
-  gap:10px;
+  gap:0px;
 }
 
 .string {
   display:flex;
   flex-direction:column;
-  width:40px;
+  width:45px;
   height:60vh;
   	/*border:1px solid black;*/
   	/*background:lightgrey;*/
@@ -116,7 +129,7 @@ h1 { margin:10px; }
   	display:flex;
   	flex-direction:column;
   	/*flex:0 0 100px;*/
-  	width:40px;
+  	width:45px;
  	height:60vh;
 	z-index: 2;
   	/*background:rgba(0,0,0,0.05);*/
@@ -135,12 +148,26 @@ h1 { margin:10px; }
 .chords button.active {
   background:orange;
 }
+
+/* === MELODY === */
+.melody {
+  margin:10px;
+  display:flex;
+  gap:5px;
+}
+
 </style>
 </head>
 
 <body>
 
 <h1>Guitar + Barre 2</h1>
+
+<div class="melody">
+  <input id="melodyInput" placeholder="6/3 5/2 d:6-1@200$Am">
+  <button id="playBtn">Играть</button>
+</div>
+
 <div class="wrapper">
   <div class="barreColumn" id="barreColumn"></div>
   <div class="box" id="box"></div>
@@ -160,12 +187,9 @@ h1 { margin:10px; }
 <script>
 let audioCtx=null;
 const audioBuffers={};
-
 const heldFrets={};
 let barreFret=null;
-
 let currentChord=null;
-
 let pointerDown=false;
 const touchedStrings=new Set();
 
@@ -412,6 +436,78 @@ buttons.forEach(btn=>{
       el.classList.add("chord-active");
     }
   });
+
+
+
+
+  // Мелодия
+  document.getElementById("playBtn").onclick = () => {
+    const text = document.getElementById("melodyInput").value.trim();
+    if(!text) return;
+
+    buttons.forEach(b=>b.classList.remove("active"));
+    document.querySelectorAll(".fret").forEach(f=>f.classList.remove("chord-active","active"));
+    currentChord=null;
+    for(let k in heldFrets) delete heldFrets[k];
+
+    playMelody(text);
+  };
+
+  function playMelody(text){
+    const tokens=text.trim().split(/\s+/);
+    let i=0;
+
+    function step(){
+      if(i>=tokens.length) return;
+      const t=tokens[i];
+
+      if(t.startsWith("d")||t.startsWith("u")){
+        const dir=t[0];
+        const range=t.match(/:(\d+)-(\d+)/);
+        const speed=t.match(/@(\d+)/);
+        const chord=t.match(/\$(\w+)/);
+        let s1=null, s2=null, sp=80, ch=null;
+        if(range){ s1=+range[1]; s2=+range[2]; }
+        if(speed) sp=+speed[1];
+        if(chord) ch=chord[1];
+        if(s1===null || s2===null){
+          if(dir==="d"){ s1=6; s2=1; } else { s1=1; s2=6; }
+        }
+        strum(s1,s2,sp,ch);
+        i++;
+        setTimeout(step, sp*Math.abs(s2-s1)+sp);
+        return;
+      }
+
+      if(t.includes("/")){
+        const [s,f]=t.split("/");
+        playNote(+s,+f,null);
+      } else if(/^[1-6]$/.test(ts)) playString(+t);
+
+      i++;
+      setTimeout(step,180);
+    }
+    step();
+  }
+
+  function strum(s1,s2,sp,ch){
+    let step = s1<=s2?1:-1;
+    for(let s=s1,i=0; step>0 ? s<=s2 : s>=s2; s+=step,i++){
+      setTimeout(()=>{
+        let fret=null;
+        if(ch && chords[ch]?.[s]) fret=chords[ch][s];
+        playNote(s,fret,ch);
+      }, i*sp);
+    }
+  }
+
+
+
+
+
+  document.addEventListener("contextmenu", e=>e.preventDefault());
+
+
 });
 </script>
 
