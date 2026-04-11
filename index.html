@@ -6,11 +6,16 @@
 <title>Guitar Universal Audio</title>
 
 <style>
-html, body {
+html {
+ background: grey;
+}
+
+body {
   margin:0;
   padding:0;
   touch-action:none;
-  background:pink;
+        /*background:pink;*/
+  background: rgb(48,56,65);
   font-family:sans-serif;
   display:flex;
   flex-direction:column;
@@ -24,7 +29,10 @@ html, body {
   -webkit-tap-highlight-color:transparent;
 }
 
-h1 { margin:10px; }
+h1 { 
+  margin:10px; 
+  color: whitesmoke;
+}
 
 /* === WELCOME === */
 #welcome {
@@ -64,7 +72,7 @@ h1 { margin:10px; }
 }
 
 .barre.active {
-  background:red;
+  background:orange;
 }
 
 /* === STRINGS === */
@@ -89,8 +97,8 @@ h1 { margin:10px; }
   left:50%;
   top:0;
   bottom:0;
-  width:2px;
-  background:black;
+  width:3px;
+  background:grey;
   transform:translateX(-50%);
   opacity:0.6;
 }
@@ -137,6 +145,10 @@ h1 { margin:10px; }
 
 .strum.active { background:orange; }
 
+.string.active-string::after {
+  background: orange;
+}
+
 /* chords */
 .chords {
   display:grid;
@@ -169,8 +181,12 @@ h1 { margin:10px; }
 </div>
 
 <div class="wrapper">
-  <div class="barreColumn" id="barreColumn"></div>
-  <div class="box" id="box"></div>
+  <!-- <div class="barreColumn" id="barreColumn"></div> -->
+  <!-- <div class="box" id="box"></div> -->
+
+  <div class="box" id="box">
+    <div class="barreColumn" id="barreColumn"></div>
+  </div>
 </div>
 
 <div class="chords">
@@ -343,13 +359,17 @@ function playNote(s,f){
   playSound(key);
 
   const stringEl=document.querySelector(`.string[data-string="${s}"]`);
+              stringEl.classList.add("active-string");
+              setTimeout(()=>stringEl.classList.remove("active-string"),150);
 
   stringEl.classList.add("vibrate");
   setTimeout(()=>stringEl.classList.remove("vibrate"),150);
 
-  const strumEl=stringEl.querySelector(".strum");
-  strumEl.classList.add("active");
-  setTimeout(()=>strumEl.classList.remove("active"),150);
+  // const strumEl=stringEl.querySelector(".strum");
+  // strumEl.classList.add("active");
+  // setTimeout(()=>strumEl.classList.remove("active"),150);
+
+
 
   if(f){
     const fretEl=document.querySelector(`.fret[data-string="${s}"][data-fret="${f}"]`);
