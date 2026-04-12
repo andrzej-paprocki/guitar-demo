@@ -6,7 +6,7 @@
 <!-- <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"> -->
 <!-- <meta name="apple-mobile-web-app-capable" content="yes"> -->
 <!-- <meta name="mobile-web-app-capable" content="yes"> -->
-<title>Guitar Universal Audio</title>
+<title>m.Guitar</title>
 
 <style>
 
@@ -46,6 +46,10 @@ h1 {
   color: whitesmoke;
 }
 
+button {
+    font-size: 16px;
+}
+
 /* === WELCOME === */
 #welcome {
   position:fixed;
@@ -73,18 +77,19 @@ h1 {
   width:85px;
   height: 80%;
   margin-left: 5px;
-  gap:10px;
+  /*gap:10px;*/
 }
 
 .barre {
-  border-radius: 10px 0px 0px 10px;
+  border-radius: 50px 0px 0px 50px;
   flex:0 0 50px;
       width: 100%;
   border-bottom:1px solid black;
-  background:#ddd;
+  background:whitesmoke;
   display:flex;
   align-items:center;
   justify-content:center;
+  color: lightgrey;
 }
 
 .barre.active {
@@ -109,7 +114,7 @@ h1 {
     /*border:1px solid black;*/
     /*background:lightgrey;*/
   position:relative;
-  gap:10px;
+  /*gap:10px;*/
 }
 
 .string::after {
@@ -142,7 +147,7 @@ h1 {
 .fret {
   flex:0 0 50px;
   border-bottom:1px solid rgba(0,0,0,0.2);
-    border-radius: 20px;
+    border-radius: 50px;
   background:grey;
   z-index: 2;
   color: white;
@@ -191,16 +196,36 @@ h1 {
   gap:5px;
 }
 
+#melodyInput {
+  margin-left: 75px;
+  width: 250px;
+  height: 30px;
+  background: whitesmoke;
+  padding-left: 5px;
+}
+
+input::placeholder {
+  color: lightgrey;
+}
+
+#playBtn {
+  width: 60px;
+  height: 36px;
+  border-radius: 50px;
+  outline: none;
+  border: none;
+}
+
 </style>
 </head>
 
 <body>
 
-<h1>Guitar + Barre 2</h1>
+<h1>m.Guitar</h1>
 
 <div class="melody">
-  <input id="melodyInput" placeholder="6/3 5/2 d:6-1@200$Am">
-  <button id="playBtn">Играть</button>
+  <input id="melodyInput" placeholder="6/3 - 5/2 - - d:6-1@200$Am">
+  <button id="playBtn">Play</button>
 </div>
 
 <div class="wrapper">
@@ -265,7 +290,7 @@ for(let f=1;f<=6;f++){
   const b=document.createElement("div");
   b.className="barre";
   b.dataset.fret=f;
-  b.textContent=f;
+  b.textContent="barre";
 
   b.addEventListener("pointerdown",e=>{
     unlockAudio();
