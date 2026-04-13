@@ -490,6 +490,7 @@ buttons.forEach(btn=>{
 
 
 
+
   // Мелодия
   document.getElementById("playBtn").onclick = () => {
     const text = document.getElementById("melodyInput").value.trim();
@@ -532,10 +533,10 @@ buttons.forEach(btn=>{
       if(t.includes("/")){
         const [s,f]=t.split("/");
         playNote(+s,+f,null);
-      } else if(/^[1-6]$/.test(t)) playString(+t);
+      } else if(/^[1-6]$/.test(ts)) playString(+t);
 
       i++;
-      setTimeout(step,250);
+      setTimeout(step,180);
     }
     step();
   }
@@ -550,11 +551,8 @@ buttons.forEach(btn=>{
       }, i*sp);
     }
   }
-
-  document.addEventListener("contextmenu",e=>e.preventDefault());
-}
-
-
+  document.addEventListener("contextmenu", e=>e.preventDefault());
+});
 </script>
 
 </body>
