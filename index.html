@@ -3,23 +3,29 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Guitar Universal Audio</title>
+<title>m.Guitar</title>
 
 <style>
+
 html {
  background: grey;
 }
 
 body {
-  margin:0;
-  padding:0;
   touch-action:none;
-        /*background:pink;*/
   background: rgb(48,56,65);
   font-family:sans-serif;
   display:flex;
   flex-direction:column;
   align-items:center;
+  overscroll-behavior:none;
+}
+
+html, body {
+  margin:0;
+  padding:0;
+  height:100%;
+  overflow:hidden;
 }
 
 * {
@@ -32,6 +38,10 @@ body {
 h1 { 
   margin:10px; 
   color: whitesmoke;
+}
+
+button {
+    font-size: 16px;
 }
 
 /* === WELCOME === */
@@ -51,26 +61,28 @@ h1 {
 .wrapper {
   display:flex;
   gap:10px;
+  height:calc(100dvh - 220px);
 }
 
 /* === BARRE === */
 .barreColumn {
   display:flex;
   flex-direction:column;
-  width:70px;
-  margin-left:-45px;
-  gap:10px;
+  width:55px;
+  height: 80%;
+  margin-left: 10px;
 }
 
 .barre {
-	border-radius: 10px 0px 0px 10px;
+  border-radius: 70px 0px 0px 70px;
   flex:0 0 50px;
-      width: 100%;
+  width: 100%;
   border-bottom:1px solid black;
-  background:#ddd;
+  background:whitesmoke;
   display:flex;
   align-items:center;
   justify-content:center;
+  color: lightgrey;
 }
 
 .barre.active {
@@ -81,17 +93,17 @@ h1 {
 .box {
   display:flex;
   gap:0px;
+  align-items:stretch; 
+  height:80%;
+  width: 400px;
 }
 
 .string {
   display:flex;
   flex-direction:column;
-  width:45px;
-  height:60vh;
-  	/*border:1px solid black;*/
-  	/*background:lightgrey;*/
+  width:54px;
+  height:calc(100dvh - 220px);
   position:relative;
-  gap:10px;
 }
 
 .string::after {
@@ -123,10 +135,10 @@ h1 {
 .fret {
   flex:0 0 50px;
   border-bottom:1px solid rgba(0,0,0,0.2);
-  	border-radius: 20px;
-	background:grey;
-	z-index: 2;
-	color: white;
+  border-radius: 50px;
+  background:grey;
+  z-index: 2;
+  color: white;
   display:flex;
   align-items:center;
   justify-content:center;
@@ -137,13 +149,11 @@ h1 {
 
 /* strum */
 .strum {
-  	display:flex;
-  	flex-direction:column;
-  	/*flex:0 0 100px;*/
-  	width:45px;
- 	height:60vh;
-	z-index: 2;
-  	/*background:rgba(0,0,0,0.05);*/
+  display:flex;
+  flex-direction:column;
+  width:54px;
+  height:60vh;
+  z-index: 2;
 }
 
 .strum.active { background:orange; }
@@ -158,6 +168,7 @@ h1 {
   grid-template-columns:repeat(4,90px);
   gap:10px;
   margin:15px;
+  height: 120px;
 }
 
 .chords button.active {
@@ -171,22 +182,39 @@ h1 {
   gap:5px;
 }
 
+#melodyInput {
+  margin-left: 60px;
+  width: 245px;
+  height: 30px;
+  background: whitesmoke;
+  padding-left: 5px;
+}
+
+input::placeholder {
+  color: lightgrey;
+}
+
+#playBtn {
+  width: 60px;
+  height: 36px;
+  border-radius: 50px;
+  outline: none;
+  border: none;
+}
+
 </style>
 </head>
 
 <body>
 
-<h1>Guitar + Barre 2</h1>
+<h1>m.Guitar 2</h1>
 
 <div class="melody">
-  <input id="melodyInput" placeholder="6/3 5/2 d:6-1@200$Am">
-  <button id="playBtn">Играть</button>
+  <input id="melodyInput" placeholder="6/3 - 5/2 - - d:6-1@200$Am">
+  <button id="playBtn">Play</button>
 </div>
 
 <div class="wrapper">
-  <!-- <div class="barreColumn" id="barreColumn"></div> -->
-  <!-- <div class="box" id="box"></div> -->
-
   <div class="box" id="box">
     <div class="barreColumn" id="barreColumn"></div>
   </div>
@@ -523,14 +551,7 @@ buttons.forEach(btn=>{
       }, i*sp);
     }
   }
-
-
-
-
-
   document.addEventListener("contextmenu", e=>e.preventDefault());
-
-
 });
 </script>
 
