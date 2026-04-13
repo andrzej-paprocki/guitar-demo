@@ -6,11 +6,7 @@
 <title>m.Guitar</title>
 
 <style>
-/* === ТВОЙ CSS БЕЗ ИЗМЕНЕНИЙ === */
-
-html {
- background: grey;
-}
+html { background: grey; }
 
 body {
   touch-action:none;
@@ -36,51 +32,16 @@ html, body {
   -webkit-tap-highlight-color:transparent;
 }
 
-h1 { 
-  margin:10px; 
-  color: whitesmoke;
-}
+h1 { margin:10px; color: whitesmoke; }
 
-button {
-    font-size: 16px;
-}
-
-.wrapper {
-  display:flex;
-  gap:10px;
-  height:calc(100dvh - 220px);
-}
-
-.barreColumn {
-  display:flex;
-  flex-direction:column;
-  width:55px;
-  height: 80%;
-  margin-left: 10px;
-}
-
-.barre {
-  border-radius: 70px 0px 0px 70px;
-  flex:0 0 50px;
-  width: 100%;
-  border-bottom:1px solid black;
-  background:whitesmoke;
-  display:flex;
-  align-items:center;
-  justify-content:center;
-  color: lightgrey;
-}
-
-.barre.active {
-  background:orange;
-}
+.wrapper { display:flex; gap:10px; height:calc(100dvh - 220px); }
 
 .box {
   display:flex;
-  gap:0px;
-  align-items:stretch; 
+  gap:0;
+  align-items:stretch;
   height:80%;
-  width: 400px;
+  width:400px;
 }
 
 .string {
@@ -100,127 +61,45 @@ button {
   width:3px;
   background:grey;
   transform:translateX(-50%);
-  opacity:0.6;
-}
-
-.string.vibrate::after {
-  animation:vibe 0.15s linear;
-}
-
-@keyframes vibe {
-  0% { transform:translateX(-50%) }
-  25% { transform:translateX(-48%) }
-  50% { transform:translateX(-52%) }
-  75% { transform:translateX(-49%) }
-  100% { transform:translateX(-50%) }
 }
 
 .fret {
   flex:0 0 50px;
-  border-bottom:1px solid rgba(0,0,0,0.2);
-  border-radius: 50px;
+  border-radius:50px;
   background:grey;
-  z-index: 2;
-  color: white;
+  color:white;
   display:flex;
   align-items:center;
   justify-content:center;
 }
 
 .fret.active { background:orange; }
-.fret.chord-active { background:#ffcc66; }
 
 .strum {
-  display:flex;
-  flex-direction:column;
   width:54px;
   height:60vh;
-  z-index: 2;
 }
 
 .strum.active { background:orange; }
 
-.string.active-string::after {
-  background: orange;
-}
-
-.chords {
-  display:grid;
-  grid-template-columns:repeat(4,90px);
-  gap:10px;
-  margin:15px;
-  height: 120px;
-}
-
-.chords button.active {
-  background:orange;
-}
-
-.melody {
-  margin:10px;
-  display:flex;
-  gap:5px;
-}
-
-#melodyInput {
-  margin-left: 60px;
-  width: 245px;
-  height: 30px;
-  background: whitesmoke;
-  padding-left: 5px;
-}
-
-input::placeholder {
-  color: lightgrey;
-}
-
-#playBtn {
-  width: 60px;
-  height: 36px;
-  border-radius: 50px;
-  outline: none;
-  border: none;
-}
 </style>
 </head>
 
 <body>
 
-<h1>m.Guitar</h1>
-
-<div class="melody">
-  <input id="melodyInput" placeholder="6/3 - 5/2 - - d:6-1@200$Am">
-  <button id="playBtn">Play</button>
-</div>
+<h1>m.Guitar 1</h1>
 
 <div class="wrapper">
-  <div class="box" id="box">
-    <div class="barreColumn" id="barreColumn"></div>
-  </div>
-</div>
-
-<div class="chords">
-  <button data-chord="Am">Am</button>
-  <button data-chord="Em">Em</button>
-  <button data-chord="C">C</button>
-  <button data-chord="G">G</button>
-  <button data-chord="Dm">Dm</button>
-  <button data-chord="E">E</button>
-  <button data-chord="A">A</button>
-  <button data-chord="D">D</button>
+  <div class="box" id="box"></div>
 </div>
 
 <script>
 let audioCtx=null;
 const audioBuffers={};
-const heldFrets={};
-let barreFret=null;
-let currentChord=null;
-let pointerDown=false;
-let isFretAction=false; // 🔥 ФИКС
-const touchedStrings=new Set();
 
-/* AUDIO */
+let pointerDown=false;
+const activeFretByString={}; // 🔥 ВАЖНО: только временное состояние
+
 function unlockAudio(){
   if(audioCtx) return;
   audioCtx=new (window.AudioContext||window.webkitAudioContext)();
@@ -246,41 +125,7 @@ function playSound(key){
   src.start(0);
 }
 
-/* BARRE */
-const barreColumn=document.getElementById("barreColumn");
-
-for(let f=1;f<=6;f++){
-  const b=document.createElement("div");
-  b.className="barre";
-  b.dataset.fret=f;
-  b.textContent="barre";
-
-  b.addEventListener("pointerdown",e=>{
-    unlockAudio();
-    barreFret=f;
-    updateBarreUI();
-  });
-
-  b.addEventListener("pointermove",e=>{
-    if(e.pressure===0) return;
-    const el=document.elementFromPoint(e.clientX,e.clientY);
-    if(!el || !el.classList.contains("barre")) return;
-    barreFret=+el.dataset.fret;
-    updateBarreUI();
-  });
-
-  b.addEventListener("pointerup",()=>barreFret=null);
-  barreColumn.appendChild(b);
-}
-
-function updateBarreUI(){
-  document.querySelectorAll(".barre").forEach(b=>b.classList.remove("active"));
-  if(barreFret){
-    document.querySelector(`.barre[data-fret="${barreFret}"]`)?.classList.add("active");
-  }
-}
-
-/* STRINGS */
+/* BUILD */
 const box=document.getElementById("box");
 
 for(let s=6;s>=1;s--){
@@ -292,127 +137,62 @@ for(let s=6;s>=1;s--){
     const fret=document.createElement("div");
     fret.className="fret";
     fret.textContent=f;
-    fret.dataset.string=s;
-    fret.dataset.fret=f;
 
     fret.addEventListener("pointerdown",e=>{
       e.stopPropagation();
-      isFretAction=true; // 🔥
       unlockAudio();
-      heldFrets[s]=f;
-      clearFrets(s);
-      fret.classList.add("active");
+
+      // 💥 важно: сохраняем ТОЛЬКО локально во время касания
+      activeFretByString[s]=f;
     });
 
-    fret.addEventListener("pointermove",e=>{
-      if(e.pressure===0) return;
-      const el=document.elementFromPoint(e.clientX,e.clientY);
-      if(!el || !el.classList.contains("fret")) return;
-      if(el.dataset.string!==String(s)) return;
-
-      const newF=+el.dataset.fret;
-      if(heldFrets[s]===newF) return;
-
-      heldFrets[s]=newF;
-      clearFrets(s);
-      el.classList.add("active");
+    fret.addEventListener("pointerup",()=>{
+      delete activeFretByString[s];
     });
-
-    const release=()=>{
-      delete heldFrets[s];
-      clearFrets(s);
-      isFretAction=false; // 🔥
-    };
-
-    fret.addEventListener("pointerup",release);
-    fret.addEventListener("pointerleave",release);
-    fret.addEventListener("pointercancel",release);
 
     stringEl.appendChild(fret);
   }
 
   const strum=document.createElement("div");
   strum.className="strum";
-  stringEl.appendChild(strum);
 
+  strum.addEventListener("pointerdown",e=>{
+    unlockAudio();
+    pointerDown=true;
+    playString(s);
+  });
+
+  stringEl.appendChild(strum);
   box.appendChild(stringEl);
 }
 
-function clearFrets(s){
-  document.querySelectorAll(`.fret[data-string="${s}"]`)
-    .forEach(el=>el.classList.remove("active"));
-}
+/* 🔥 ГЛАВНАЯ ЛОГИКА */
+function playString(s){
+  const fret = activeFretByString[s] ?? null; 
+  // ❗ НЕТ влияния других струн вообще
 
-function playNote(s,f){
-  const key=f?`${s}-${f}`:String(s);
+  const key = fret ? `${s}-${fret}` : String(s);
   playSound(key);
 
-  const stringEl=document.querySelector(`.string[data-string="${s}"]`);
-  stringEl.classList.add("active-string");
-  setTimeout(()=>stringEl.classList.remove("active-string"),150);
+  const el=document.querySelector(`.string[data-string="${s}"]`);
+  el?.classList.add("active");
+
+  setTimeout(()=>el?.classList.remove("active"),150);
 }
 
-function playString(s){
-  let f=null;
-
-  if(barreFret) f=barreFret;
-  else if(heldFrets[s]!=null) f=heldFrets[s];
-  else if(currentChord && chords[currentChord]?.[s]) f=chords[currentChord][s];
-
-  playNote(s,f);
-}
-
-function handleStrum(e){
-  if(isFretAction) return; // 🔥 главный фикс
-
-  const el=document.elementFromPoint(e.clientX,e.clientY);
+/* STRUM GLOBAL */
+document.addEventListener("pointerdown",e=>{
+  const el = e.target.closest(".strum");
   if(!el) return;
 
-  const stringEl=el.closest(".string");
-  if(!stringEl) return;
-
-  const s=stringEl.dataset.string;
-  if(touchedStrings.has(s)) return;
-
-  touchedStrings.add(s);
-  playString(s);
-}
-
-document.addEventListener("pointerdown",e=>{
-  if(isFretAction) return;
-
   unlockAudio();
-  pointerDown=true;
-  touchedStrings.clear();
-  handleStrum(e);
+  const s = el.parentElement.dataset.string;
+  playString(s);
 });
-
-document.addEventListener("pointermove",e=>{
-  if(pointerDown && !isFretAction){
-    e.preventDefault();
-    handleStrum(e);
-  }
-},{passive:false});
 
 document.addEventListener("pointerup",()=>{
   pointerDown=false;
-  touchedStrings.clear();
-  isFretAction=false;
 });
-
-/* CHORDS */
-const chords={
-  "Am":{2:1,3:2,4:2},
-  "Em":{5:2,4:2},
-  "C":{2:1,4:2,5:3},
-  "G":{1:3,6:3,5:2},
-  "Dm":{1:1,2:3,3:2},
-  "E":{3:1,4:2,5:2},
-  "A":{2:2,3:2,4:2},
-  "D":{1:2,2:3,3:2}
-};
-
-document.addEventListener("contextmenu",e=>e.preventDefault());
 </script>
 
 </body>
