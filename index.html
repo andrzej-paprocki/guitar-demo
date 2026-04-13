@@ -207,7 +207,7 @@ input::placeholder {
 
 <body>
 
-<h1>m.Guitar 03-9</h1>
+<h1>m.Guitar 03-10 test</h1>
 
 <div class="melody">
   <input id="melodyInput" placeholder="6/3 - 5/2 - - d:6-1@200$Am">
@@ -423,16 +423,34 @@ function playString(s){
 
 /* STRUM */
 function handleStrum(e){
-  const el=document.elementFromPoint(e.clientX,e.clientY);
-  if(!el || !el.classList.contains("strum")) return;
+  // Берёт элемент под пальцем
+  const el = document.elementFromPoint(e.clientX, e.clientY);
+  if(!el) return;
 
-  const s=el.dataset.string;
+  // Поднимается вверх до струны
+  const stringEl = el.closest(".string");
+  if(!stringEl) return;
+
+  // Определяет номер струны
+  const s = stringEl.dataset.string;
   if(touchedStrings.has(s)) return;
 
+  // Проверяет, не сыграли ли уже эту струну в этом свайпе
   touchedStrings.add(s);
+  // И играет звук
   playString(s);
 }
 
+
+// Запуск свайпа (старт касания)
+document.addEventListener("pointerdown", e=>{
+  unlockAudio();
+  pointerDown = true;
+  touchedStrings.clear();
+  handleStrum(e);
+});
+
+// Продолжение свайпа (движение пальца)
 document.addEventListener("pointermove",e=>{
   if(pointerDown){
     e.preventDefault();
@@ -440,6 +458,7 @@ document.addEventListener("pointermove",e=>{
   }
 },{passive:false});
 
+// Завершение свайпа
 document.addEventListener("pointerup",()=>{
   pointerDown=false;
   touchedStrings.clear();
@@ -533,10 +552,10 @@ buttons.forEach(btn=>{
       if(t.includes("/")){
         const [s,f]=t.split("/");
         playNote(+s,+f,null);
-      } else if(/^[1-6]$/.test(ts)) playString(+t);
+      } else if(/^[1-6]$/.test(t)) playString(+t);
 
       i++;
-      setTimeout(step,180);
+      setTimeout(step,250);
     }
     step();
   }
@@ -551,7 +570,8 @@ buttons.forEach(btn=>{
       }, i*sp);
     }
   }
-  document.addEventListener("contextmenu", e=>e.preventDefault());
+
+  document.addEventListener("contextmenu",e=>e.preventDefault());
 });
 </script>
 
