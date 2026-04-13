@@ -207,7 +207,7 @@ input::placeholder {
 
 <body>
 
-<h1>m.Guitar 2</h1>
+<h1>m.Guitar 3</h1>
 
 <div class="melody">
   <input id="melodyInput" placeholder="6/3 - 5/2 - - d:6-1@200$Am">
@@ -533,10 +533,10 @@ buttons.forEach(btn=>{
       if(t.includes("/")){
         const [s,f]=t.split("/");
         playNote(+s,+f,null);
-      } else if(/^[1-6]$/.test(ts)) playString(+t);
+      } else if(/^[1-6]$/.test(t)) playString(+t);
 
       i++;
-      setTimeout(step,180);
+      setTimeout(step,250);
     }
     step();
   }
@@ -551,8 +551,9 @@ buttons.forEach(btn=>{
       }, i*sp);
     }
   }
-  document.addEventListener("contextmenu", e=>e.preventDefault());
-});
+
+  document.addEventListener("contextmenu",e=>e.preventDefault());
+}
 </script>
 
 </body>
