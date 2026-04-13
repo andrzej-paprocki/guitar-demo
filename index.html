@@ -416,6 +416,9 @@ function handleStrum(e){
 
 /* SINGLE GLOBAL CONTROL ONLY */
 document.addEventListener("pointerdown",e=>{
+  // ❗ ВАЖНО: если нажали на лад — не играем струну
+  if(e.target.closest(".fret")) return;
+
   unlockAudio();
   pointerDown=true;
   touchedStrings.clear();
