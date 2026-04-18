@@ -386,21 +386,16 @@ function clearFrets(s){
 
 /* PLAY */
 function playNote(s,f){
-  const key=f?`${s}-${f}`:String(s);
+  const key = `${s}-${f ?? 0}`; // ✅ теперь всегда string-fret
+
   playSound(key);
 
   const stringEl=document.querySelector(`.string[data-string="${s}"]`);
-              stringEl.classList.add("active-string");
-              setTimeout(()=>stringEl.classList.remove("active-string"),150);
+  stringEl.classList.add("active-string");
+  setTimeout(()=>stringEl.classList.remove("active-string"),150);
 
   stringEl.classList.add("vibrate");
   setTimeout(()=>stringEl.classList.remove("vibrate"),150);
-
-  // const strumEl=stringEl.querySelector(".strum");
-  // strumEl.classList.add("active");
-  // setTimeout(()=>strumEl.classList.remove("active"),150);
-
-
 
   if(f){
     const fretEl=document.querySelector(`.fret[data-string="${s}"][data-fret="${f}"]`);
