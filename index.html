@@ -242,20 +242,34 @@ const touchedStrings=new Set();
 
 /* AUDIO */
 function unlockAudio(){
-  if(audioCtx) return;
-  audioCtx=new (window.AudioContext||window.webkitAudioContext)();
+  if(!audioCtx){
+    audioCtx=new (window.AudioContext||window.webkitAudioContext)();
+  }
+
+  // 🔥 ОБЯЗАТЕЛЬНО для Chrome/Safari
+  if(audioCtx.state === "suspended"){
+    audioCtx.resume();
+  }
 }
 
 function playSound(key){
   if(!audioCtx) return;
 
+  console.log("PLAY:", key);
+
   if(!audioBuffers[key]){
     fetch(`sounds/${key}.mp3`)
-      .then(r=>r.arrayBuffer())
+      .then(r=>{
+        if(!r.ok) throw new Error("Missing sound: "+key);
+        return r.arrayBuffer();
+      })
       .then(buf=>audioCtx.decodeAudioData(buf))
       .then(decoded=>{
         audioBuffers[key]=decoded;
         playSound(key);
+      })
+      .catch(err=>{
+        console.warn(err);
       });
     return;
   }
@@ -331,9 +345,13 @@ for(let s=6;s>=1;s--){
     fret.addEventListener("pointerdown",e=>{
       e.stopPropagation();
       unlockAudio();
+
       heldFrets[s]=f;
       clearFrets(s);
       fret.classList.add("active");
+
+      // 🎸 ГЛАВНОЕ: звук лада
+      playNote(s,f);
     });
 
     fret.addEventListener("pointermove",e=>{
@@ -390,21 +408,19 @@ function playNote(s,f){
   playSound(key);
 
   const stringEl=document.querySelector(`.string[data-string="${s}"]`);
-              stringEl.classList.add("active-string");
-              setTimeout(()=>stringEl.classList.remove("active-string"),150);
+
+  stringEl.classList.add("active-string");
+  setTimeout(()=>stringEl.classList.remove("active-string"),150);
 
   stringEl.classList.add("vibrate");
   setTimeout(()=>stringEl.classList.remove("vibrate"),150);
 
-  // const strumEl=stringEl.querySelector(".strum");
-  // strumEl.classList.add("active");
-  // setTimeout(()=>strumEl.classList.remove("active"),150);
-
-
-
   if(f){
-    const fretEl=document.querySelector(`.fret[data-string="${s}"][data-fret="${f}"]`);
+    const fretEl=document.querySelector(
+      `.fret[data-string="${s}"][data-fret="${f}"]`
+    );
     fretEl.classList.add("active");
+
     setTimeout(()=>{
       if(!heldFrets[s]) fretEl.classList.remove("active");
     },150);
@@ -423,34 +439,27 @@ function playString(s){
 
 /* STRUM */
 function handleStrum(e){
-  // Берёт элемент под пальцем
-  const el = document.elementFromPoint(e.clientX, e.clientY);
+  const el=document.elementFromPoint(e.clientX,e.clientY);
   if(!el) return;
 
-  // Поднимается вверх до струны
-  const stringEl = el.closest(".string");
+  const stringEl=el.closest(".string");
   if(!stringEl) return;
 
-  // Определяет номер струны
-  const s = stringEl.dataset.string;
+  const s=stringEl.dataset.string;
   if(touchedStrings.has(s)) return;
 
-  // Проверяет, не сыграли ли уже эту струну в этом свайпе
   touchedStrings.add(s);
-  // И играет звук
   playString(s);
 }
 
-
-// Запуск свайпа (старт касания)
-document.addEventListener("pointerdown", e=>{
+/* GLOBAL EVENTS */
+document.addEventListener("pointerdown",e=>{
   unlockAudio();
-  pointerDown = true;
+  pointerDown=true;
   touchedStrings.clear();
   handleStrum(e);
 });
 
-// Продолжение свайпа (движение пальца)
 document.addEventListener("pointermove",e=>{
   if(pointerDown){
     e.preventDefault();
@@ -458,7 +467,6 @@ document.addEventListener("pointermove",e=>{
   }
 },{passive:false});
 
-// Завершение свайпа
 document.addEventListener("pointerup",()=>{
   pointerDown=false;
   touchedStrings.clear();
@@ -502,77 +510,52 @@ buttons.forEach(btn=>{
 
     for(let s in chords[name]){
       const f=chords[name][s];
-      const el=document.querySelector(`.fret[data-string="${s}"][data-fret="${f}"]`);
+      const el=document.querySelector(
+        `.fret[data-string="${s}"][data-fret="${f}"]`
+      );
       el.classList.add("chord-active");
     }
   });
-
-
-
-
-  // Мелодия
-  document.getElementById("playBtn").onclick = () => {
-    const text = document.getElementById("melodyInput").value.trim();
-    if(!text) return;
-
-    buttons.forEach(b=>b.classList.remove("active"));
-    document.querySelectorAll(".fret").forEach(f=>f.classList.remove("chord-active","active"));
-    currentChord=null;
-    for(let k in heldFrets) delete heldFrets[k];
-
-    playMelody(text);
-  };
-
-  function playMelody(text){
-    const tokens=text.trim().split(/\s+/);
-    let i=0;
-
-    function step(){
-      if(i>=tokens.length) return;
-      const t=tokens[i];
-
-      if(t.startsWith("d")||t.startsWith("u")){
-        const dir=t[0];
-        const range=t.match(/:(\d+)-(\d+)/);
-        const speed=t.match(/@(\d+)/);
-        const chord=t.match(/\$(\w+)/);
-        let s1=null, s2=null, sp=80, ch=null;
-        if(range){ s1=+range[1]; s2=+range[2]; }
-        if(speed) sp=+speed[1];
-        if(chord) ch=chord[1];
-        if(s1===null || s2===null){
-          if(dir==="d"){ s1=6; s2=1; } else { s1=1; s2=6; }
-        }
-        strum(s1,s2,sp,ch);
-        i++;
-        setTimeout(step, sp*Math.abs(s2-s1)+sp);
-        return;
-      }
-
-      if(t.includes("/")){
-        const [s,f]=t.split("/");
-        playNote(+s,+f,null);
-      } else if(/^[1-6]$/.test(t)) playString(+t);
-
-      i++;
-      setTimeout(step,250);
-    }
-    step();
-  }
-
-  function strum(s1,s2,sp,ch){
-    let step = s1<=s2?1:-1;
-    for(let s=s1,i=0; step>0 ? s<=s2 : s>=s2; s+=step,i++){
-      setTimeout(()=>{
-        let fret=null;
-        if(ch && chords[ch]?.[s]) fret=chords[ch][s];
-        playNote(s,fret,ch);
-      }, i*sp);
-    }
-  }
-
-  document.addEventListener("contextmenu",e=>e.preventDefault());
 });
+
+/* MELODY */
+document.getElementById("playBtn").onclick = () => {
+  const text=document.getElementById("melodyInput").value.trim();
+  if(!text) return;
+
+  buttons.forEach(b=>b.classList.remove("active"));
+  document.querySelectorAll(".fret")
+    .forEach(f=>f.classList.remove("chord-active","active"));
+
+  currentChord=null;
+  for(let k in heldFrets) delete heldFrets[k];
+
+  playMelody(text);
+};
+
+function playMelody(text){
+  const tokens=text.trim().split(/\s+/);
+  let i=0;
+
+  function step(){
+    if(i>=tokens.length) return;
+    const t=tokens[i];
+
+    if(t.includes("/")){
+      const [s,f]=t.split("/");
+      playNote(+s,+f);
+    } else if(/^[1-6]$/.test(t)){
+      playString(+t);
+    }
+
+    i++;
+    setTimeout(step,250);
+  }
+
+  step();
+}
+
+document.addEventListener("contextmenu",e=>e.preventDefault());
 </script>
 
 </body>
