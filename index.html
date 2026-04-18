@@ -386,7 +386,7 @@ function clearFrets(s){
 
 /* PLAY */
 function playNote(s,f){
-  const key = `${s}-${f ?? 0}`;
+  const key=f?`${s}-${f}`:String(s);
   playSound(key);
 
   const stringEl=document.querySelector(`.string[data-string="${s}"]`);
