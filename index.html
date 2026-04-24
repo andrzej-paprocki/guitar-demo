@@ -36,7 +36,7 @@ html, body {
 }
 
 h1 { 
-  margin:5px; 
+  margin:10px; 
   color: whitesmoke;
 }
 
@@ -203,7 +203,7 @@ button {
 
 <body>
 
-<h1>m.Guitar 6 frets</h1>
+<h1>m.Guitar 16 frets</h1>
 
 <div class="melody">
 
@@ -247,66 +247,66 @@ speedControl.oninput = () => {
   speedLabel.textContent = "Speed: " + playbackSpeed.toFixed(1) + "x";
 };
 
-let audioCtx=null;
-const audioBuffers={};
-const heldFrets={};
-let barreFret=null;
-let currentChord=null;
-let pointerDown=false;
-const touchedStrings=new Set();
+let audioCtx = null;
+const audioBuffers = {};
+const heldFrets = {};
+let barreFret = null;
+let currentChord = null;
+let pointerDown = false;
+const touchedStrings = new Set();
 
 const audios = {};
 
 function preloadSound(key){
   if(!audios[key]){
-    audios[key]=new Audio(`sounds/${key}.mp3`);
+    audios[key] = new Audio(`sounds/${key}.mp3`);
   }
 }
 
 function playSound(key){
   preloadSound(key);
-  const audio=audios[key];
+  const audio = audios[key];
   if(!audio) return;
-  audio.currentTime=0;
+  audio.currentTime = 0;
   audio.play().catch(()=>{});
 }
 
 /* BARRE */
-const barreColumn=document.getElementById("barreColumn");
+const barreColumn = document.getElementById("barreColumn");
 
-for(let f=1;f<=6;f++){
-  const b=document.createElement("div");
-  b.className="barre";
-  b.dataset.fret=f;
-  b.textContent=f;
+for(let f=1; f<=6; f++){
+  const b = document.createElement("div");
+  b.className = "barre";
+  b.dataset.fret = f;
+  b.textContent = f;
 
-  b.addEventListener("pointerdown",()=>{
-    barreFret=f;
+  b.addEventListener("pointerdown", () => {
+    barreFret = f;
     updateBarreUI();
   });
 
-  b.addEventListener("pointermove",e=>{
-    if(e.pressure===0) return;
+  b.addEventListener("pointermove", e => {
+    if(e.pressure === 0) return;
 
-    const el=document.elementFromPoint(e.clientX,e.clientY);
+    const el = document.elementFromPoint(e.clientX, e.clientY);
     if(!el || !el.classList.contains("barre")) return;
 
-    const newF=+el.dataset.fret;
-    if(barreFret===newF) return;
+    const newF = +el.dataset.fret;
+    if(barreFret === newF) return;
 
-    barreFret=newF;
+    barreFret = newF;
     updateBarreUI();
   });
 
-  b.addEventListener("pointerup",releaseBarre);
-  b.addEventListener("pointerleave",releaseBarre);
-  b.addEventListener("pointercancel",releaseBarre);
+  b.addEventListener("pointerup", releaseBarre);
+  b.addEventListener("pointerleave", releaseBarre);
+  b.addEventListener("pointercancel", releaseBarre);
 
   barreColumn.appendChild(b);
 }
 
 function updateBarreUI(){
-  document.querySelectorAll(".barre").forEach(b=>b.classList.remove("active"));
+  document.querySelectorAll(".barre").forEach(b => b.classList.remove("active"));
   if(barreFret){
     document.querySelector(`.barre[data-fret="${barreFret}"]`)
       ?.classList.add("active");
@@ -314,67 +314,67 @@ function updateBarreUI(){
 }
 
 function releaseBarre(){
-  barreFret=null;
+  barreFret = null;
   updateBarreUI();
 }
 
 /* STRINGS */
-const box=document.getElementById("box");
+const box = document.getElementById("box");
 
-for(let s=6;s>=1;s--){
-  const stringEl=document.createElement("div");
-  stringEl.className="string";
-  stringEl.dataset.string=s;
+for(let s=6; s>=1; s--){
+  const stringEl = document.createElement("div");
+  stringEl.className = "string";
+  stringEl.dataset.string = s;
 
-  for(let f=1;f<=6;f++){
-    const fret=document.createElement("div");
-    fret.className="fret";
-    fret.textContent=f;
-    fret.dataset.string=s;
-    fret.dataset.fret=f;
+  for(let f=1; f<=6; f++){
+    const fret = document.createElement("div");
+    fret.className = "fret";
+    fret.textContent = f;
+    fret.dataset.string = s;
+    fret.dataset.fret = f;
 
-    fret.addEventListener("pointerdown",e=>{
+    fret.addEventListener("pointerdown", e => {
       e.stopPropagation();
 
-      heldFrets[s]=f;
+      heldFrets[s] = f;
       clearFrets(s);
       fret.classList.add("active");
 
-      playNote(s,f);
+      playNote(s, f);
     });
 
-    fret.addEventListener("pointermove",e=>{
-      if(e.pressure===0) return;
+    fret.addEventListener("pointermove", e => {
+      if(e.pressure === 0) return;
 
-      const el=document.elementFromPoint(e.clientX,e.clientY);
+      const el = document.elementFromPoint(e.clientX, e.clientY);
       if(!el || !el.classList.contains("fret")) return;
-      if(el.dataset.string!==String(s)) return;
+      if(el.dataset.string !== String(s)) return;
 
-      const newF=+el.dataset.fret;
-      if(heldFrets[s]===newF) return;
+      const newF = +el.dataset.fret;
+      if(heldFrets[s] === newF) return;
 
-      heldFrets[s]=newF;
+      heldFrets[s] = newF;
       clearFrets(s);
       el.classList.add("active");
 
-      playNote(s,newF);
+      playNote(s, newF);
     });
 
-    const release=()=>{
+    const release = () => {
       delete heldFrets[s];
       clearFrets(s);
     };
 
-    fret.addEventListener("pointerup",release);
-    fret.addEventListener("pointerleave",release);
-    fret.addEventListener("pointercancel",release);
+    fret.addEventListener("pointerup", release);
+    fret.addEventListener("pointerleave", release);
+    fret.addEventListener("pointercancel", release);
 
     stringEl.appendChild(fret);
   }
 
-  const strum=document.createElement("div");
-  strum.className="strum";
-  strum.dataset.string=s;
+  const strum = document.createElement("div");
+  strum.className = "strum";
+  strum.dataset.string = s;
 
   stringEl.appendChild(strum);
   box.appendChild(stringEl);
@@ -383,86 +383,87 @@ for(let s=6;s>=1;s--){
 /* HELPERS */
 function clearFrets(s){
   document.querySelectorAll(`.fret[data-string="${s}"]`)
-    .forEach(el=>el.classList.remove("active"));
+    .forEach(el => el.classList.remove("active"));
 }
 
 /* PLAY */
 function playNote(s,f){
-  const key=f?`${s}-${f}`:String(s);
+  const key = f ? `${s}-${f}` : String(s);
 
   playSound(key);
 
-  const stringEl=document.querySelector(`.string[data-string="${s}"]`);
+  const stringEl = document.querySelector(`.string[data-string="${s}"]`);
 
   if(stringEl){
     stringEl.classList.add("active-string");
-    setTimeout(()=>stringEl.classList.remove("active-string"),150);
+    setTimeout(() => stringEl.classList.remove("active-string"), 150);
 
     stringEl.classList.add("vibrate");
-    setTimeout(()=>stringEl.classList.remove("vibrate"),150);
+    setTimeout(() => stringEl.classList.remove("vibrate"), 150);
   }
 
   if(f){
-    const fretEl=document.querySelector(
+    const fretEl = document.querySelector(
       `.fret[data-string="${s}"][data-fret="${f}"]`
     );
 
     if(fretEl){
       fretEl.classList.add("active");
 
-      setTimeout(()=>{
+      setTimeout(() => {
         if(!heldFrets[s]) fretEl.classList.remove("active");
-      },150);
+      }, 150);
     }
   }
 }
+
 function playString(s){
-  let f=null;
+  let f = null;
 
-  if(barreFret) f=barreFret;
-  else if(heldFrets[s]!=null) f=heldFrets[s];
-  else if(currentChord && chords[currentChord]?.[s]) f=chords[currentChord][s];
+  if(barreFret) f = barreFret;
+  else if(heldFrets[s] != null) f = heldFrets[s];
+  else if(currentChord && chords[currentChord]?.[s]) f = chords[currentChord][s];
 
-  playNote(s,f);
+  playNote(s, f);
 }
 
 /* SWIPE */
 function handleStrum(e){
-  const el=document.elementFromPoint(e.clientX,e.clientY);
+  const el = document.elementFromPoint(e.clientX, e.clientY);
   if(!el) return;
 
-  const stringEl=el.closest(".string");
+  const stringEl = el.closest(".string");
   if(!stringEl) return;
 
-  const s=stringEl.dataset.string;
+  const s = stringEl.dataset.string;
 
-  const key=`s-${s}`;
+  const key = `s-${s}`;
   if(touchedStrings.has(key)) return;
 
   touchedStrings.add(key);
   playString(s);
 }
 
-document.addEventListener("pointerdown",e=>{
-  pointerDown=true;
+document.addEventListener("pointerdown", e => {
+  pointerDown = true;
   touchedStrings.clear();
   handleStrum(e);
 });
 
-document.addEventListener("pointermove",e=>{
+document.addEventListener("pointermove", e => {
   if(pointerDown){
     e.preventDefault();
     handleStrum(e);
   }
-},{passive:false});
+}, {passive:false});
 
-document.addEventListener("pointerup",()=>{
-  pointerDown=false;
+document.addEventListener("pointerup", () => {
+  pointerDown = false;
   touchedStrings.clear();
 });
 
 /* CHORDS */
-const chords={
+const chords = {
   "Am":{2:1,3:2,4:2},
   "Em":{5:2,4:2},
   "C":{2:1,4:2,5:3},
@@ -473,30 +474,30 @@ const chords={
   "D":{1:2,2:3,3:2}
 };
 
-const buttons=document.querySelectorAll(".chords button");
+const buttons = document.querySelectorAll(".chords button");
 
-buttons.forEach(btn=>{
-  btn.addEventListener("pointerdown",()=>{
-    const name=btn.dataset.chord;
+buttons.forEach(btn => {
+  btn.addEventListener("pointerdown", () => {
+    const name = btn.dataset.chord;
 
-    if(currentChord===name){
-      currentChord=null;
+    if(currentChord === name){
+      currentChord = null;
       btn.classList.remove("active");
       document.querySelectorAll(".fret")
-        .forEach(f=>f.classList.remove("chord-active"));
+        .forEach(f => f.classList.remove("chord-active"));
       return;
     }
 
-    buttons.forEach(b=>b.classList.remove("active"));
+    buttons.forEach(b => b.classList.remove("active"));
     document.querySelectorAll(".fret")
-      .forEach(f=>f.classList.remove("chord-active"));
+      .forEach(f => f.classList.remove("chord-active"));
 
-    currentChord=name;
+    currentChord = name;
     btn.classList.add("active");
 
     for(let s in chords[name]){
-      const f=chords[name][s];
-      const el=document.querySelector(
+      const f = chords[name][s];
+      const el = document.querySelector(
         `.fret[data-string="${s}"][data-fret="${f}"]`
       );
       el?.classList.add("chord-active");
@@ -509,47 +510,83 @@ document.getElementById("playBtn").onclick = () => {
   const text = document.getElementById("melodyInput").value.trim();
   if(!text) return;
 
-  buttons.forEach(b=>b.classList.remove("active"));
-  document.querySelectorAll(".fret").forEach(f=>f.classList.remove("chord-active","active"));
-  currentChord=null;
+  buttons.forEach(b => b.classList.remove("active"));
+  document.querySelectorAll(".fret")
+    .forEach(f => f.classList.remove("chord-active","active"));
+
+  currentChord = null;
   for(let k in heldFrets) delete heldFrets[k];
 
   playMelody(text);
 };
 
 function playMelody(text){
-  const tokens=text.trim().split(/\s+/);
-  let i=0;
+  const tokens = text
+  .replace(/\s*\+\s*/g, "+")  // убираем влияние пробелов вокруг +
+  .trim()
+  .split(/\s+/)
+  .filter(Boolean);
+  let i = 0;
 
   function step(){
-    if(i>=tokens.length) return;
-    const t=tokens[i];
+    if(i >= tokens.length) return;
 
-    if(t.startsWith("d")||t.startsWith("u")){
+    let t = tokens[i].trim();
+
+    // 🔥 1. 631
+    if(/^[1-6]{2,}$/.test(t)){
+      t.split("").map(Number).forEach(playString);
+      i++;
+      setTimeout(step, 200 / playbackSpeed);
+      return;
+    }
+
+    // 🔥 2. 6/2 + 1/3
+    if(t.includes("+") && t.includes("/")){
+      const clean = t.replace(/\s*\+\s*/g, "+");
+      clean.split("+").forEach(n => {
+        const [s,f] = n.split("/").map(Number);
+        playNote(s,f);
+      });
+
+      i++;
+      setTimeout(step, 250 / playbackSpeed);
+      return;
+    }
+
+    // 🔥 3. d/u
+    if(t.startsWith("d") || t.startsWith("u")){
       const dir=t[0];
       const range=t.match(/:(\d+)-(\d+)/);
       const speed=t.match(/@(\d+)/);
       const chord=t.match(/\$(\w+)/);
+
       let s1=null, s2=null, sp=80, ch=null;
+
       if(range){ s1=+range[1]; s2=+range[2]; }
       if(speed) sp=+speed[1];
       if(chord) ch=chord[1];
 
-      if(s1===null || s2===null){
-        if(dir==="d"){ s1=6; s2=1; } else { s1=1; s2=6; }
+      if(s1===null){
+        s1 = dir==="d" ? 6 : 1;
+        s2 = dir==="d" ? 1 : 6;
       }
 
       strum(s1,s2,sp,ch);
 
       i++;
-      setTimeout(step, (sp*Math.abs(s2-s1)+sp) / playbackSpeed);
+      setTimeout(step, (sp*Math.abs(s2-s1)+sp)/playbackSpeed);
       return;
     }
 
+    // 🔥 4. 6/2
     if(t.includes("/")){
       const [s,f]=t.split("/");
-      playNote(+s,+f,null);
-    } else if(/^[1-6]$/.test(t)) playString(+t);
+      playNote(+s,+f);
+    }
+    else if(/^[1-6]$/.test(t)){
+      playString(+t);
+    }
 
     i++;
     setTimeout(step, 250 / playbackSpeed);
@@ -560,16 +597,17 @@ function playMelody(text){
 
 function strum(s1,s2,sp,ch){
   let step = s1<=s2?1:-1;
+
   for(let s=s1,i=0; step>0 ? s<=s2 : s>=s2; s+=step,i++){
     setTimeout(()=>{
       let fret=null;
       if(ch && chords[ch]?.[s]) fret=chords[ch][s];
-      playNote(s,fret,ch);
-    }, (i*sp) / playbackSpeed);
+      playNote(s,fret);
+    }, i*sp/playbackSpeed);
   }
 }
 
-document.addEventListener("contextmenu",e=>e.preventDefault());
+document.addEventListener("contextmenu", e => e.preventDefault());
 
 </script>
 
