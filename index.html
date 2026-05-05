@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>m.Guitar</title>
+<link rel="stylesheet" href="styles.css">
+</head>
+
+<body>
+
+<h1>m.Guitar 16 frets</h1>
+
+<div class="melody">
+  <div class="melodyRow">
+    <input id="melodyInput" placeholder="6/3 - 5/2 - - d:6-1@200$Am">
+    <button id="playBtn">Play</button>
+  </div>
+
+  <!-- 🔥 ДОБАВЛЕН ПОЛЗУНОК -->
+  <input type="range" id="speedControl" min="0.5" max="2" step="0.1" value="1">
+  <div id="speedLabel">Speed: 1.0x</div>
+
+</div>
+
+<div class="wrapper">
+  <div class="box" id="box">
+    <div class="barreColumn" id="barreColumn"></div>
+  </div>
+</div>
+
+<div class="chords">
+  <button data-chord="Am">Am</button>
+  <button data-chord="Em">Em</button>
+  <button data-chord="C">C</button>
+  <button data-chord="G">G</button>
+  <button data-chord="Dm">Dm</button>
+  <button data-chord="E">E</button>
+  <button data-chord="A">A</button>
+  <button data-chord="D">D</button>
+</div>
+
+<script src = "script.js">
+</script>
+
+</body>
+</html>

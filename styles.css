@@ -1,0 +1,193 @@
+html {
+ background: grey;
+}
+
+body {
+  touch-action:none;
+  background: rgb(48,56,65);
+  font-family:sans-serif;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  overscroll-behavior:none;
+}
+
+html, body {
+  margin:0;
+  padding:0;
+  height:100%;
+  overflow:hidden;
+}
+
+* {
+  user-select:none;
+  -webkit-user-select:none;
+  -webkit-touch-callout:none;
+  -webkit-tap-highlight-color:transparent;
+}
+
+
+h1 { 
+  margin:10px; 
+  color: whitesmoke;
+}
+
+button {
+    font-size: 16px;
+}
+
+/* === LAYOUT === */
+.wrapper {
+  display:flex;
+  gap:10px;
+  height:calc(100dvh - 220px);
+}
+
+/* === BARRE === */
+.barreColumn {
+  display:flex;
+  flex-direction:column;
+  width:55px;
+  height: 80%;
+  margin-left: 10px;
+}
+
+.barre {
+  border-radius: 70px 0px 0px 70px;
+  flex:0 0 50px;
+  width: 100%;
+  border-bottom:1px solid black;
+  background:whitesmoke;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  color: lightgrey;
+}
+
+.barre.active {
+  background:orange;
+}
+
+/* === STRINGS === */
+.box {
+  display:flex;
+  gap:0px;
+  align-items:stretch; 
+  height:80%;
+  width: 400px;
+}
+
+.string {
+  display:flex;
+  flex-direction:column;
+  width:54px;
+  height:calc(100dvh - 280px);
+  position:relative;
+}
+
+.string::after {
+  content:"";
+  position:absolute;
+  left:50%;
+  top:0;
+  bottom:0;
+  width:3px;
+  background:grey;
+  transform:translateX(-50%);
+  opacity:0.6;
+}
+
+.string.vibrate::after {
+  animation:vibe 0.15s linear;
+}
+
+@keyframes vibe {
+  0% { transform:translateX(-50%) }
+  25% { transform:translateX(-48%) }
+  50% { transform:translateX(-52%) }
+  75% { transform:translateX(-49%) }
+  100% { transform:translateX(-50%) }
+}
+
+.fret {
+  flex:0 0 50px;
+  border-bottom:1px solid rgba(0,0,0,0.2);
+  border-radius: 50px;
+  background:grey;
+  z-index: 2;
+  color: white;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+}
+
+.fret.active { background:orange; }
+.fret.chord-active { background:#ffcc66; }
+
+.strum {
+  display:flex;
+  flex-direction:column;
+  width:54px;
+  height:55vh;
+  z-index: 2;
+}
+
+.string.active-string::after {
+  background: orange;
+}
+
+/* === MELODY === */
+.melody {
+  margin:10px;
+  display:flex;
+  flex-direction:column;
+  align-items:flex-start;
+}
+
+.melodyRow {
+  display:flex;
+  gap:5px;
+}
+
+#melodyInput {
+  margin-left: 60px;
+  width: 245px;
+  height: 30px;
+  background: whitesmoke;
+  padding-left: 5px;
+}
+
+#playBtn {
+  width: 60px;
+  height: 36px;
+  border-radius: 50px;
+  outline: none;
+  border: none;
+}
+
+/* 🔥 SLIDER (добавлено) */
+#speedControl {
+  margin-left: 60px;
+  margin-top: 20px;
+  width: 250px;
+
+}
+
+#speedLabel {
+  margin-left: 60px;
+  color: white;
+  font-size: 12px;
+}
+
+/* chords */
+.chords {
+  display:grid;
+  grid-template-columns:repeat(4,90px);
+  gap:10px;
+  margin:15px;
+  height: 110px;
+}
+
+.chords button.active {
+  background:orange;
+}
