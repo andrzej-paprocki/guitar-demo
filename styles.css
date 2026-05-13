@@ -36,14 +36,14 @@ button {
     font-size: 16px;
 }
 
-/* === LAYOUT === */
+/* LAYOUT */
 .wrapper {
   display:flex;
   gap:10px;
   height:calc(100dvh - 220px);
 }
 
-/* === BARRE === */
+/* BARRE */
 .barreColumn {
   display:flex;
   flex-direction:column;
@@ -136,7 +136,7 @@ button {
   background: orange;
 }
 
-/* === MELODY === */
+/* MELODY */
 .melody {
   margin:10px;
   display:flex;
@@ -165,7 +165,7 @@ button {
   border: none;
 }
 
-/* 🔥 SLIDER (добавлено) */
+/* SLIDER */
 #speedControl {
   margin-left: 60px;
   margin-top: 20px;
