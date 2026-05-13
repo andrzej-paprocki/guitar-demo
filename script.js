@@ -313,12 +313,10 @@ document.addEventListener("contextmenu", e => e.preventDefault());
 
 
 function playMelody(text){
-
-  // 🔥 нормализация + гарантируем токены
   const tokens = text
     .replace(/\s+/g, " ")
     .replace(/\s*\+\s*/g, "+")
-    .replace(/=/g, " = ")   // 👈 "=" всегда отдельный токен
+    .replace(/=/g, " = ")   // "=" 
     .trim()
     .split(/\s+/)
     .filter(Boolean);
@@ -330,7 +328,7 @@ function playMelody(text){
 
     let t = tokens[i];
 
-    // 🔥 1. ПАУЗЫ (=, ==, ===)
+    // Pauses (=, ==, ===)
     if(/^=+$/.test(t)){
       const pauses = t.length;
 
@@ -339,7 +337,7 @@ function playMelody(text){
       return;
     }
 
-    // 🔥 2. d / u (единственное место где есть "-")
+    // d / u (there is "-")
     if(t.startsWith("d") || t.startsWith("u")){
       const dir = t[0];
 
@@ -365,7 +363,7 @@ function playMelody(text){
       return;
     }
 
-    // 🔥 3. АККОРДЫ (+)
+    // Chords
     if(t.includes("+")){
       const parts = t.split("+");
 
@@ -384,7 +382,7 @@ function playMelody(text){
       return;
     }
 
-    // 🔥 4. последовательность струн (12, 234)
+    // String sequences (12, 234)
     if(/^[1-6]{2,}$/.test(t)){
       t.split("").map(Number).forEach(playString);
 
@@ -393,13 +391,13 @@ function playMelody(text){
       return;
     }
 
-    // 🔥 5. одиночная нота 6/2
+    // Single note (6/2)
     if(t.includes("/")){
       const [s,f] = t.split("/").map(Number);
       playNote(s,f);
     }
 
-    // 🔥 6. одиночная струна
+    // Single string
     else if(/^[1-6]$/.test(t)){
       playString(+t);
     }
