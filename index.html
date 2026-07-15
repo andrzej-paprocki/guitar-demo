@@ -215,7 +215,7 @@ button {
     <button id="playBtn">Play</button>
   </div>
 
-  <!-- 🔥 ДОБАВЛЕН ПОЛЗУНОК -->
+  <!-- Slider -->
   <input type="range" id="speedControl" min="0.5" max="2" step="0.1" value="1">
   <div id="speedLabel">Speed: 1.0x</div>
 
@@ -522,7 +522,7 @@ buttons.forEach(btn => {
   });
 });
 
-/* === ДЕФОЛТНАЯ МЕЛОДИЯ (используется, если поле ввода пустое) === */
+/* Default Melody */
 const defaultMelody = `
 6 - 3 - 2 - 1 - 2 - 3 -
 6 - 3 - 2 - 1 - 2 - 3 -
@@ -545,13 +545,13 @@ let strumTimers = [];
 
 playBtn.onclick = () => {
 
-  // Если мелодия уже играет — останавливаем
+  // Stop if melody is playing
   if(isPlaying){
     stopPlaybackNow();
     return;
   }
 
-  // Если поле пустое — берём дефолтную мелодию
+  // Default Melody if the input is empty
   const text = document.getElementById("melodyInput").value.trim() || defaultMelody.trim();
 
   buttons.forEach(b => b.classList.remove("active"));
@@ -574,7 +574,7 @@ function stopPlaybackNow(){
   clearTimeout(playbackTimer);
   playbackTimer = null;
 
-  // отменяем ещё не сыгравшие ноты внутри текущего удара (strum)
+  // We cancel any notes within the current strum that haven't been played yet
   strumTimers.forEach(t => clearTimeout(t));
   strumTimers = [];
 
