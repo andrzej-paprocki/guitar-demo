@@ -215,7 +215,7 @@ button {
     <button id="playBtn">Play</button>
   </div>
 
-  <!-- Slider -->
+  <!-- Slider added -->
   <input type="range" id="speedControl" min="0.5" max="2" step="0.1" value="1">
   <div id="speedLabel">Speed: 1.0x</div>
 
@@ -241,6 +241,7 @@ button {
 <script>
 
 let playbackSpeed = 1;
+
 const speedControl = document.getElementById("speedControl");
 const speedLabel = document.getElementById("speedLabel");
 
@@ -256,17 +257,14 @@ let barreFret = null;
 let currentChord = null;
 let pointerDown = false;
 const touchedStrings = new Set();
+
 const audios = {};
-
-
 
 function preloadSound(key){
   if(!audios[key]){
     audios[key] = new Audio(`sounds/${key}.mp3`);
   }
 }
-
-
 
 function playSound(key){
   preloadSound(key);
@@ -276,7 +274,16 @@ function playSound(key){
   audio.play().catch(()=>{});
 }
 
-
+/* PRELOAD */
+function preloadAllSounds(){
+  for(let s = 1; s <= 6; s++){
+    preloadSound(String(s));       // string
+    for(let f = 1; f <= 6; f++){
+      preloadSound(`${s}-${f}`);   // string + chord
+    }
+  }
+}
+preloadAllSounds();
 
 /* BARRE */
 const barreColumn = document.getElementById("barreColumn");
@@ -320,12 +327,10 @@ function updateBarreUI(){
   }
 }
 
-
 function releaseBarre(){
   barreFret = null;
   updateBarreUI();
 }
-
 
 /* STRINGS */
 const box = document.getElementById("box");
@@ -381,11 +386,11 @@ for(let s=6; s>=1; s--){
     stringEl.appendChild(fret);
   }
 
-  const strum = document.createElement("div");
-  strum.className = "strum";
-  strum.dataset.string = s;
+  const strumEl = document.createElement("div");
+  strumEl.className = "strum";
+  strumEl.dataset.string = s;
 
-  stringEl.appendChild(strum);
+  stringEl.appendChild(strumEl);
   box.appendChild(stringEl);
 }
 
@@ -394,8 +399,6 @@ function clearFrets(s){
   document.querySelectorAll(`.fret[data-string="${s}"]`)
     .forEach(el => el.classList.remove("active"));
 }
-
-
 
 /* PLAY */
 function playNote(s,f){
@@ -428,8 +431,6 @@ function playNote(s,f){
   }
 }
 
-
-
 function playString(s){
   let f = null;
 
@@ -439,8 +440,6 @@ function playString(s){
 
   playNote(s, f);
 }
-
-
 
 /* SWIPE */
 function handleStrum(e){
@@ -458,8 +457,6 @@ function handleStrum(e){
   touchedStrings.add(key);
   playString(s);
 }
-
-
 
 document.addEventListener("pointerdown", e => {
   pointerDown = true;
@@ -522,7 +519,7 @@ buttons.forEach(btn => {
   });
 });
 
-/* Default Melody */
+/* === Default Melody === */
 const defaultMelody = `
 6 - 3 - 2 - 1 - 2 - 3 -
 6 - 3 - 2 - 1 - 2 - 3 -
@@ -531,8 +528,7 @@ const defaultMelody = `
 16 - 3 - 2 - 16 - 2 - 3 -
 6 - 3 - d:2-1@10 - - d:2-1@10 - - d:3-1@10 - -
 25 - 3/5 - 2/5 - 1/2 - 2/5 - 3/5 -
-5 - 3/5 - 2/5 - d:2-1@10 - - d:1-3@10 - - d:1-3@10 - - 5 - - - - -
-2 - 1/3 - 1/3 - 1/3 1/5 1/3 - 1/2 - 1/2 - - - 1/2 - 1/2 - 1/3 1/2 1
+5 - 3/5 - 2/5 - d:2-1@10 - - d:1-3@10 - - d:1-3@10 - - 5
 `;
 
 /* === PLAY / STOP === */
@@ -545,13 +541,13 @@ let strumTimers = [];
 
 playBtn.onclick = () => {
 
-  // Stop if melody is playing
+  // Stop if melody doesn't play
   if(isPlaying){
     stopPlaybackNow();
     return;
   }
 
-  // Default Melody if the input is empty
+  // Default melody if the field is empty
   const text = document.getElementById("melodyInput").value.trim() || defaultMelody.trim();
 
   buttons.forEach(b => b.classList.remove("active"));
@@ -574,7 +570,7 @@ function stopPlaybackNow(){
   clearTimeout(playbackTimer);
   playbackTimer = null;
 
-  // We cancel any notes within the current strum that haven't been played yet
+  // Regret
   strumTimers.forEach(t => clearTimeout(t));
   strumTimers = [];
 
@@ -589,30 +585,10 @@ function finishPlayback(){
   playBtn.textContent = "Play";
 }
 
-
-
-function strum(s1,s2,sp,ch){
-  let step = s1<=s2?1:-1;
-
-  for(let s=s1,i=0; step>0 ? s<=s2 : s>=s2; s+=step,i++){
-    const t = setTimeout(()=>{
-      if(stopPlayback) return;
-      let fret=null;
-      if(ch && chords[ch]?.[s]) fret=chords[ch][s];
-      playNote(s,fret);
-    }, i*sp/playbackSpeed);
-    strumTimers.push(t);
-  }
-}
-
-document.addEventListener("contextmenu", e => e.preventDefault());
-
-
+/* === MELODY ENGINE  === */
 function playMelody(text){
   const tokens = text
-    .replace(/\s+/g, " ")
-    .replace(/\s*\+\s*/g, "+")
-    .replace(/=/g, " = ")   // "="
+    .replace(/\s*\+\s*/g, "+")  // space doesn't impact
     .trim()
     .split(/\s+/)
     .filter(Boolean);
@@ -631,57 +607,22 @@ function playMelody(text){
       return;
     }
 
-    let t = tokens[i];
+    let t = tokens[i].trim();
 
-    // Pauses (=, ==, ===)
-    if(/^=+$/.test(t)){
-      const pauses = t.length;
-
+    // 123, itp
+    if(/^[1-6]{2,}$/.test(t)){
+      t.split("").map(Number).forEach(playString);
       i++;
-      playbackTimer = setTimeout(step, (250 * pauses) / playbackSpeed);
+      playbackTimer = setTimeout(step, 200 / playbackSpeed);
       return;
     }
 
-    // d / u (there is "-")
-    if(t.startsWith("d") || t.startsWith("u")){
-      const dir = t[0];
-
-      const range = t.match(/:(\d+)-(\d+)/);
-      const speed = t.match(/@(\d+)/);
-      const chord = t.match(/\$(\w+)/);
-
-      let s1, s2, sp = 80, ch = null;
-
-      if(range){
-        s1 = +range[1];
-        s2 = +range[2];
-      } else {
-        s1 = dir === "d" ? 6 : 1;
-        s2 = dir === "d" ? 1 : 6;
-      }
-
-      if(speed) sp = +speed[1];
-      if(chord) ch = chord[1];
-
-      strum(s1, s2, sp, ch);
-
-      i++;
-      playbackTimer = setTimeout(step, (sp * Math.abs(s2 - s1) + sp) / playbackSpeed);
-      return;
-    }
-
-    // Chords
-    if(t.includes("+")){
-      const parts = t.split("+");
-
-      parts.forEach(part => {
-        if(part.includes("/")){
-          const [s,f] = part.split("/").map(Number);
-          playNote(s,f);
-        }
-        else if(/^[1-6]$/.test(part)){
-          playString(+part);
-        }
+    // (6/2+1/3)
+    if(t.includes("+") && t.includes("/")){
+      const clean = t.replace(/\s*\+\s*/g, "+");
+      clean.split("+").forEach(n => {
+        const [s,f] = n.split("/").map(Number);
+        playNote(s,f);
       });
 
       i++;
@@ -689,22 +630,36 @@ function playMelody(text){
       return;
     }
 
-    // String sequences (12, 234)
-    if(/^[1-6]{2,}$/.test(t)){
-      t.split("").map(Number).forEach(playString);
+    // (d/u)
+    if(t.startsWith("d") || t.startsWith("u")){
+      const dir=t[0];
+      const range=t.match(/:(\d+)-(\d+)/);
+      const speed=t.match(/@(\d+)/);
+      const chord=t.match(/\$(\w+)/);
+
+      let s1=null, s2=null, sp=80, ch=null;
+
+      if(range){ s1=+range[1]; s2=+range[2]; }
+      if(speed) sp=+speed[1];
+      if(chord) ch=chord[1];
+
+      if(s1===null){
+        s1 = dir==="d" ? 6 : 1;
+        s2 = dir==="d" ? 1 : 6;
+      }
+
+      strum(s1,s2,sp,ch);
 
       i++;
-      playbackTimer = setTimeout(step, 200 / playbackSpeed);
+      playbackTimer = setTimeout(step, (sp*Math.abs(s2-s1)+sp)/playbackSpeed);
       return;
     }
 
-    // Single note (6/2)
+    // (6/2) or single string
     if(t.includes("/")){
-      const [s,f] = t.split("/").map(Number);
-      playNote(s,f);
+      const [s,f]=t.split("/");
+      playNote(+s,+f);
     }
-
-    // Single string
     else if(/^[1-6]$/.test(t)){
       playString(+t);
     }
@@ -714,7 +669,23 @@ function playMelody(text){
   }
 
   step();
-}document.addEventListener("contextmenu", e => e.preventDefault());
+}
+
+function strum(s1,s2,sp,ch){
+  let step = s1<=s2?1:-1;
+
+  for(let s=s1,i=0; step>0 ? s<=s2 : s>=s2; s+=step,i++){
+    const t = setTimeout(()=>{
+      if(stopPlayback) return;
+      let fret=null;
+      if(ch && chords[ch]?.[s]) fret=chords[ch][s];
+      playNote(s,fret);
+    }, i*sp/playbackSpeed);
+    strumTimers.push(t);
+  }
+}
+
+document.addEventListener("contextmenu", e => e.preventDefault());
 
 </script>
 
