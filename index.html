@@ -174,7 +174,7 @@ button {
   border: none;
 }
 
-/* SLIDER */
+/* 🔥 SLIDER (добавлено) */
 #speedControl {
   margin-left: 60px;
   margin-top: 20px;
@@ -206,7 +206,7 @@ button {
 
 <body>
 
-<h1>m.Guitar</h1>
+<h1>m.Guitar 16 frets</h1>
 
 <div class="melody">
 
@@ -215,7 +215,7 @@ button {
     <button id="playBtn">Play</button>
   </div>
 
-  <!-- Slider added -->
+  <!-- 🔥 ДОБАВЛЕН ПОЛЗУНОК -->
   <input type="range" id="speedControl" min="0.5" max="2" step="0.1" value="1">
   <div id="speedLabel">Speed: 1.0x</div>
 
@@ -250,36 +250,57 @@ speedControl.oninput = () => {
   speedLabel.textContent = "Speed: " + playbackSpeed.toFixed(1) + "x";
 };
 
-let audioCtx = null;
-const audioBuffers = {};
+let audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+const audioBuffers = {};   // key -> уже декодированный AudioBuffer, готовый к мгновенному воспроизведению
+const pendingLoads = {};   // key -> Promise загрузки, чтобы не грузить один файл дважды
 const heldFrets = {};
 let barreFret = null;
 let currentChord = null;
 let pointerDown = false;
 const touchedStrings = new Set();
 
-const audios = {};
-
-function preloadSound(key){
-  if(!audios[key]){
-    audios[key] = new Audio(`sounds/${key}.mp3`);
+// Chrome/Safari создают AudioContext в состоянии "suspended" до первого жеста пользователя —
+// "разбудим" его при первом касании экрана.
+function ensureAudioResumed(){
+  if(audioCtx.state === "suspended"){
+    audioCtx.resume();
   }
+}
+document.addEventListener("pointerdown", ensureAudioResumed);
+
+function loadSound(key){
+  if(audioBuffers[key] || pendingLoads[key]) return pendingLoads[key];
+
+  pendingLoads[key] = fetch(`sounds/${key}.mp3`)
+    .then(res => res.arrayBuffer())
+    .then(data => audioCtx.decodeAudioData(data))
+    .then(buffer => { audioBuffers[key] = buffer; })
+    .catch(() => {}); // если файла нет — просто тишина, без ошибок в консоли пользователю
+
+  return pendingLoads[key];
 }
 
 function playSound(key){
-  preloadSound(key);
-  const audio = audios[key];
-  if(!audio) return;
-  audio.currentTime = 0;
-  audio.play().catch(()=>{});
+  const buffer = audioBuffers[key];
+  if(!buffer) return; // ещё не декодирован — к этому моменту preloadAllSounds почти всегда успевает
+
+  // Каждый вызов создаёт новый source — это позволяет одному и тому же звуку
+  // играть параллельно сам с собой (например, быстрый повтор одной струны),
+  // без обрезания предыдущего воспроизведения.
+  const source = audioCtx.createBufferSource();
+  source.buffer = buffer;
+  source.connect(audioCtx.destination);
+  source.start(0);
 }
 
-/* PRELOAD */
+/* Предзагрузка и ДЕКОДИРОВАНИЕ ВСЕХ возможных звуков сразу при старте страницы —
+   именно декодирование заранее (а не просто скачивание) убирает заикания
+   в Chrome/Opera при быстрых и одновременных нотах */
 function preloadAllSounds(){
   for(let s = 1; s <= 6; s++){
-    preloadSound(String(s));       // string
+    loadSound(String(s));       // открытая струна
     for(let f = 1; f <= 6; f++){
-      preloadSound(`${s}-${f}`);   // string + chord
+      loadSound(`${s}-${f}`);   // струна+лад
     }
   }
 }
@@ -519,7 +540,7 @@ buttons.forEach(btn => {
   });
 });
 
-/* === Default Melody === */
+/* === ДЕФОЛТНАЯ МЕЛОДИЯ (используется, если поле ввода пустое) === */
 const defaultMelody = `
 6 - 3 - 2 - 1 - 2 - 3 -
 6 - 3 - 2 - 1 - 2 - 3 -
@@ -541,13 +562,13 @@ let strumTimers = [];
 
 playBtn.onclick = () => {
 
-  // Stop if melody doesn't play
+  // Если мелодия уже играет — останавливаем
   if(isPlaying){
     stopPlaybackNow();
     return;
   }
 
-  // Default melody if the field is empty
+  // Если поле пустое — берём дефолтную мелодию
   const text = document.getElementById("melodyInput").value.trim() || defaultMelody.trim();
 
   buttons.forEach(b => b.classList.remove("active"));
@@ -570,7 +591,7 @@ function stopPlaybackNow(){
   clearTimeout(playbackTimer);
   playbackTimer = null;
 
-  // Regret
+  // отменяем ещё не сыгравшие ноты внутри текущего удара (strum)
   strumTimers.forEach(t => clearTimeout(t));
   strumTimers = [];
 
@@ -585,10 +606,10 @@ function finishPlayback(){
   playBtn.textContent = "Play";
 }
 
-/* === MELODY ENGINE  === */
+/* === MELODY ENGINE (движок, который хорошо проигрывает) === */
 function playMelody(text){
   const tokens = text
-    .replace(/\s*\+\s*/g, "+")  // space doesn't impact
+    .replace(/\s*\+\s*/g, "+")  // убираем влияние пробелов вокруг +
     .trim()
     .split(/\s+/)
     .filter(Boolean);
@@ -609,7 +630,7 @@ function playMelody(text){
 
     let t = tokens[i].trim();
 
-    // 123, itp
+    // 🔥 1. Последовательность/аккорд струн (напр. 16, 25)
     if(/^[1-6]{2,}$/.test(t)){
       t.split("").map(Number).forEach(playString);
       i++;
@@ -617,7 +638,7 @@ function playMelody(text){
       return;
     }
 
-    // (6/2+1/3)
+    // 🔥 2. Одновременные ноты (6/2+1/3)
     if(t.includes("+") && t.includes("/")){
       const clean = t.replace(/\s*\+\s*/g, "+");
       clean.split("+").forEach(n => {
@@ -630,7 +651,7 @@ function playMelody(text){
       return;
     }
 
-    // (d/u)
+    // 🔥 3. Удар вверх/вниз (d/u)
     if(t.startsWith("d") || t.startsWith("u")){
       const dir=t[0];
       const range=t.match(/:(\d+)-(\d+)/);
@@ -655,7 +676,7 @@ function playMelody(text){
       return;
     }
 
-    // (6/2) or single string
+    // 🔥 4. Одиночная нота (6/2) или одиночная струна
     if(t.includes("/")){
       const [s,f]=t.split("/");
       playNote(+s,+f);
